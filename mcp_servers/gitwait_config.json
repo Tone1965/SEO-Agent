@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gitwait": {
+      "command": "python",
+      "args": ["mcp_servers/gitwait_server.py"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "GITWAIT_WEBHOOK_URL": "${GITWAIT_WEBHOOK_URL}",
+        "GITWAIT_CI_WAIT": "300",
+        "GITWAIT_PR_WAIT": "600", 
+        "GITWAIT_MAX_WAIT": "3600",
+        "GITWAIT_RATE_LIMIT": "60"
+      }
+    }
+  }
+}
