@@ -11,6 +11,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - ALWAYS approach problems like a senior developer with comprehensive research
 - WHEN troubleshooting: analyze the ENTIRE system, not just surface symptoms
 
+## 🔒 PROTECTED DOCUMENTATION POLICY
+**CRITICAL**: The following files require explicit permission before ANY modifications:
+- **README.md** - Main project documentation
+- **CLAUDE.md** - This instruction file
+
+### MANDATORY PROCESS for Claude Code:
+1. **ASK PERMISSION FIRST**: "May I modify the README.md/CLAUDE.md file?"
+2. **EXPLAIN THE CHANGES**: Describe what you plan to modify and why
+3. **WAIT FOR APPROVAL**: Do not proceed without explicit user confirmation
+4. **ONLY PROCEED AFTER "YES"**: Clear approval required before making changes
+
+**VIOLATION OF THIS POLICY IS STRICTLY PROHIBITED**
+
 ## Project Overview
 
 This is the **SEO Agent System** - a complete AI-powered website generation platform that uses 10 specialized AI agents with advanced agentic capabilities including memory, error recovery, monitoring, and coordination to create unique, SEO-optimized websites for local service businesses.

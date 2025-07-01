@@ -4,6 +4,20 @@
 
 Generate unique, SEO-optimized websites for local service businesses using 10 specialized AI agents with memory, error recovery, monitoring, and coordination capabilities.
 
+## 🔒 Documentation Protection Policy
+
+**CRITICAL**: The following files require explicit permission before ANY modifications:
+- **README.md** - This main project documentation file
+- **CLAUDE.md** - Claude Code instruction file
+
+### MANDATORY PROCESS for All Contributors:
+1. **ASK PERMISSION FIRST**: "May I modify the README.md/CLAUDE.md file?"
+2. **EXPLAIN THE CHANGES**: Describe what you plan to modify and why
+3. **WAIT FOR APPROVAL**: Do not proceed without explicit confirmation
+4. **ONLY PROCEED AFTER "YES"**: Clear approval required before making changes
+
+**These files are protected to maintain documentation integrity and prevent unauthorized changes.**
+
 ## 🚀 Overview
 
 This system automatically creates complete websites with:
