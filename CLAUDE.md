@@ -13,27 +13,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-This is the **SEO Agent System** - a complete AI-powered website generation platform that uses 10 specialized AI agents to create unique, SEO-optimized websites for local service businesses.
+This is the **SEO Agent System** - a complete AI-powered website generation platform that uses 10 specialized AI agents with advanced agentic capabilities including memory, error recovery, monitoring, and coordination to create unique, SEO-optimized websites for local service businesses.
 
 ### Core Technology Stack
 - **Backend**: Python with Flask and Celery
 - **AI Models**: Claude Sonnet 4 + OpenAI GPT-4
 - **Frontend**: HTML5/CSS3/JavaScript with Alpine.js
-- **Database**: Supabase (PostgreSQL)
+- **Database**: Supabase (PostgreSQL) + SQLite for agent data
+- **Coordination**: Redis for task queues and inter-agent communication
+- **Monitoring**: Prometheus metrics + custom performance tracking
 - **Deployment**: Docker + Digital Ocean/Netlify/Vercel
 - **Version Control**: Git + GitHub integration
 
 ### System Architecture
 
-The system operates as a multi-agent orchestration platform:
+The system operates as a multi-agent orchestration platform with advanced coordination:
 
 ```
-User Input → Python Orchestrator → 10 AI Agents → Complete Website
+User Input → Python Orchestrator → Agent Coordinator → 10 AI Agents → Complete Website
+                    ↓                      ↓              ↓
+              Task Queues            Memory System    Error Recovery
+                    ↓                      ↓              ↓
+             Performance Monitor    Learning Pipeline  Health Monitoring
 ```
 
 ## File Structure and Responsibilities
 
 ### Core System Files
+
+#### **Advanced Agentic Components** ⭐ NEW
+
+#### `agent_memory.py` - **MEMORY & LEARNING SYSTEM**
+- **Purpose**: Provides persistent memory and learning capabilities for AI agents
+- **Key Classes**:
+  - `AgentMemoryStore` - Persistent SQLite storage for agent memories
+  - `ShortTermMemory` - Working memory for current tasks (TTL-based)
+  - `SharedMemory` - Inter-agent knowledge sharing via Redis
+  - `LearningPipeline` - Continuous improvement from outcomes
+  - `AgentMemoryManager` - Main coordinator for all memory systems
+- **Usage**: Enables agents to remember successful patterns, learn from failures, and improve over time
+- **Dependencies**: SQLite, Redis, threading for concurrent access
+
+#### `error_recovery.py` - **ERROR RECOVERY & RESILIENCE**
+- **Purpose**: Provides automatic retry mechanisms, fallback strategies, and self-healing capabilities
+- **Key Classes**:
+  - `ErrorRecoveryEngine` - Main engine for error handling and recovery
+  - `CircuitBreakerState` - Prevents cascade failures with circuit breaker pattern
+  - `RetryConfig` - Configuration for exponential backoff retry logic
+  - `FailureEvent` - Records and analyzes failure patterns
+- **Usage**: Ensures system can recover from API failures, network issues, and other errors
+- **Decorators**: `@with_retry` for automatic retry with circuit breaker support
+
+#### `agent_monitor.py` - **PERFORMANCE MONITORING**
+- **Purpose**: Real-time agent performance tracking, success/failure rates, and quality scores
+- **Key Classes**:
+  - `AgentPerformanceMonitor` - Main monitoring coordinator
+  - `ResourceMonitor` - System resource usage tracking (CPU, memory, network)
+  - `ExecutionRecord` - Individual agent execution tracking
+  - `AgentMetrics` - Performance metrics aggregation
+- **Usage**: Monitor agent health, track costs, measure quality, optimize performance
+- **Integration**: Prometheus metrics, custom dashboards, alerting
+
+#### `agent_coordinator.py` - **COORDINATION PROTOCOL**
+- **Purpose**: Agent coordination, priority systems, resource allocation, and conflict resolution
+- **Key Classes**:
+  - `AgentCoordinator` - Main coordination system
+  - `Task` - Task definition with priorities and dependencies
+  - `Agent` - Agent registration and status management
+  - `ResourcePool` - System resource allocation and management
+  - `DeadlockDetector` - Prevents and resolves circular dependencies
+- **Usage**: Orchestrate multiple agents working together efficiently, prevent conflicts
+- **Advanced Features**: Priority queues, resource limits, deadlock detection
+
+### Original Core System Files
 
 #### `main.py` - **CORE ORCHESTRATION SYSTEM**
 - **Purpose**: Main engine that coordinates all 10 AI agents
@@ -120,34 +172,52 @@ OPENAI_API_KEY=your_openai_api_key
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 
-# Background Tasks
+# Background Tasks & Coordination
 REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/0
+
+# Advanced Agentic Features
+UPSTASH_REDIS_URL=your_upstash_redis_url  # For shared memory
+QSTASH_TOKEN=your_qstash_token           # For async messaging
+
+# Monitoring & Observability
+SENTRY_DSN=your_sentry_dsn               # Error tracking
+PROMETHEUS_PORT=8000                     # Metrics export
 
 # Optional: Advanced Features
 GITHUB_TOKEN=your_github_token
 DOCKER_HOST=unix:///var/run/docker.sock
+FIRECRAWL_API_KEY=your_firecrawl_key     # Web scraping
 ```
 
 ## Development Commands
 
 ```bash
+# Install dependencies (recommended)
+pip install -r requirements.txt
+
+# Start required services
+redis-server                              # Start Redis server
+celery -A main.celery worker --loglevel=info  # Start Celery worker (separate terminal)
+
 # Start development server
 python main.py
 
-# Start Celery worker (separate terminal)
-celery -A main.celery worker --loglevel=info
+# Testing individual components
+python agent_memory.py                   # Test memory system
+python error_recovery.py                 # Test error recovery
+python agent_monitor.py                  # Test monitoring
+python agent_coordinator.py              # Test coordination
 
-# Start Redis (if not running)
-redis-server
+# Advanced testing
+python -m pytest tests/                  # Run full test suite
+python -c "from main import *; test_system()"  # Quick system test
 
-# Install dependencies
-pip install flask celery anthropic openai playwright beautifulsoup4 supabase docker gitpython
-
-# Run tests (when implemented)
-python -m pytest tests/
+# Monitoring and debugging
+python -c "from agent_monitor import *; monitor = AgentPerformanceMonitor(); print(monitor.get_system_performance_summary())"
 
 # Type checking
-mypy main.py
+mypy main.py agent_memory.py error_recovery.py agent_monitor.py agent_coordinator.py
 ```
 
 ## API Endpoints
@@ -175,29 +245,63 @@ mypy main.py
 
 #### 1. API Rate Limits
 - **Problem**: Claude/OpenAI API rate limit errors
-- **Solution**: Implement exponential backoff, request queuing
-- **Files to Check**: `main.py` AIClient class
+- **Solution**: Error recovery system automatically handles this with exponential backoff
+- **Files to Check**: `error_recovery.py` ErrorRecoveryEngine, `main.py` AIClient class
+- **Debug**: Check circuit breaker state, retry configurations
 
 #### 2. Memory Issues
 - **Problem**: Large content generation causing memory errors
 - **Solution**: Process content in chunks, implement streaming
-- **Files to Check**: All agent classes in `main.py`
+- **Files to Check**: All agent classes in `main.py`, `agent_memory.py` for memory cleanup
+- **Debug**: Monitor memory usage with `agent_monitor.py`
 
-#### 3. Uniqueness Validation Failures
+#### 3. Agent Coordination Failures
+- **Problem**: Tasks stuck in queue, deadlocks, resource conflicts
+- **Solution**: Check agent coordination system and resource allocation
+- **Files to Check**: `agent_coordinator.py` DeadlockDetector, ResourcePool
+- **Debug**: `coordinator.get_coordination_status()` for system health
+
+#### 4. Performance Degradation
+- **Problem**: Slow agent execution, high failure rates
+- **Solution**: Monitor system performance and adjust configurations
+- **Files to Check**: `agent_monitor.py` performance metrics
+- **Debug**: Check success rates, execution times, resource usage
+
+#### 5. Memory System Issues
+- **Problem**: Agents not learning, memory not persisting
+- **Solution**: Check Redis connection, SQLite database integrity
+- **Files to Check**: `agent_memory.py` AgentMemoryStore, SharedMemory
+- **Debug**: Test Redis connectivity, check database files
+
+#### 6. Uniqueness Validation Failures
 - **Problem**: Generated content too similar to previous
 - **Solution**: Increase variation parameters, regenerate with new seed
 - **Files to Check**: `unique_generator.py`
 
-#### 4. Deployment Failures
+#### 7. Deployment Failures
 - **Problem**: Docker or platform deployment errors
 - **Solution**: Check configuration files, validate credentials
 - **Files to Check**: `mcp_integration.py`
 
-### Debug Mode
-Enable detailed logging:
+### Advanced Debug Mode
+Enable detailed logging and monitoring:
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Enable advanced monitoring
+from agent_monitor import AgentPerformanceMonitor
+from agent_coordinator import AgentCoordinator
+from error_recovery import ErrorRecoveryEngine
+
+monitor = AgentPerformanceMonitor()
+coordinator = AgentCoordinator()
+recovery = ErrorRecoveryEngine()
+
+# Check system health
+print("System Status:", coordinator.get_coordination_status())
+print("Performance:", monitor.get_system_performance_summary())
+print("Recovery Engine:", recovery.component_health)
 ```
 
 ## Performance Optimization
@@ -336,12 +440,24 @@ Every website must be completely unique:
 
 When working with this system:
 
-1. **Always understand the full context** - This is a complex multi-agent system
+1. **Understand the advanced architecture** - This is a complex multi-agent system with memory, error recovery, monitoring, and coordination
 2. **Respect the AI model division** - Claude for analysis, OpenAI for creativity
 3. **Maintain uniqueness** - Every generation must be different
 4. **Focus on business value** - Generate websites that convert and rank
-5. **Consider scalability** - Code for production deployment
-6. **Preserve integrations** - Don't break the agent orchestration
+5. **Consider scalability** - Code for production deployment with monitoring
+6. **Preserve integrations** - Don't break the agent orchestration or agentic features
 7. **Test thoroughly** - Complex systems require comprehensive testing
+8. **Monitor performance** - Use the built-in monitoring system to track agent health
+9. **Handle errors gracefully** - The error recovery system should handle most failures automatically
+10. **Leverage memory** - Agents learn and improve over time through the memory system
 
-The system is designed to generate complete, professional websites automatically. Any modifications should enhance this capability while maintaining the quality and uniqueness standards.
+### Advanced Agentic Features Integration
+
+When modifying agents or adding new functionality:
+
+- **Use memory decorators** to enable learning: `@with_memory(memory_manager)`
+- **Add error recovery** to critical functions: `@with_retry(retry_config, circuit_breaker_config)`
+- **Include monitoring** for new agents: `@monitor_agent_execution(monitor, agent_id, agent_name)`
+- **Register with coordinator** for task management: `coordinator.register_agent(agent)`
+
+The system is designed to generate complete, professional websites automatically with enterprise-grade reliability. Any modifications should enhance this capability while maintaining the quality, uniqueness, and reliability standards.
