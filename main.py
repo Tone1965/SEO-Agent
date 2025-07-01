@@ -15,9 +15,10 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 import aiohttp
 import os
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from celery import Celery
 import uuid
+from website_generator import WebsiteFileGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -106,33 +107,101 @@ class MarketScannerAgent:
     
     async def analyze_market(self, config: ProjectConfig) -> Dict[str, Any]:
         """Comprehensive market analysis"""
-        prompt = f"""
-        Analyze the local {config.business_type} market in {config.location}.
+        logger.info(f"Market Scanner analyzing {config.business_type} in {config.location}")
         
-        Provide detailed analysis of:
-        1. Market size and demand
-        2. Top 10 competitors with their strengths/weaknesses
-        3. Market gaps and opportunities
-        4. Seasonal trends and patterns
-        5. Local economic factors
-        6. Target customer demographics
-        7. Pricing strategies in the market
-        8. Digital presence analysis of competitors
+        prompt = f"""
+        You are a professional market research analyst. Analyze the local {config.business_type} market in {config.location}.
+        
+        Provide a comprehensive analysis in JSON format with the following structure:
+        {{
+            "market_overview": {{
+                "market_size": "estimated annual revenue",
+                "demand_level": "high/medium/low",
+                "growth_trend": "growing/stable/declining",
+                "seasonality": "seasonal patterns description"
+            }},
+            "competitors": [
+                {{
+                    "name": "competitor name",
+                    "website": "website if known",
+                    "strengths": ["strength1", "strength2"],
+                    "weaknesses": ["weakness1", "weakness2"],
+                    "market_share": "estimated percentage",
+                    "pricing_strategy": "premium/competitive/budget"
+                }}
+            ],
+            "opportunities": [
+                "specific market gap or opportunity",
+                "underserved customer segment",
+                "service differentiation opportunity"
+            ],
+            "target_demographics": {{
+                "primary_age_range": "age range",
+                "income_level": "income bracket",
+                "property_type": "residential/commercial/both",
+                "pain_points": ["main customer problems"]
+            }},
+            "pricing_insights": {{
+                "average_service_cost": "price range",
+                "premium_pricing_opportunity": "yes/no with explanation",
+                "competitive_pricing_required": "yes/no with explanation"
+            }},
+            "digital_landscape": {{
+                "seo_difficulty": "high/medium/low",
+                "top_ranking_sites": ["domain1.com", "domain2.com"],
+                "social_media_presence": "strong/weak in market",
+                "online_review_importance": "critical/important/moderate"
+            }},
+            "recommended_strategy": {{
+                "positioning": "how to position in market",
+                "key_differentiators": ["unique selling point 1", "unique selling point 2"],
+                "marketing_channels": ["recommended channels"],
+                "content_themes": ["content topic 1", "content topic 2"]
+            }}
+        }}
         
         Competition level: {config.competition_level}
-        Target keywords: {config.target_keywords}
+        Target keywords: {', '.join(config.target_keywords)}
+        Budget range: {config.budget_range}
         
-        Format as JSON with actionable insights.
+        Be specific and actionable. Base insights on real market conditions for {config.location}.
         """
         
-        analysis = await self.ai_client.claude_request(prompt)
-        
-        return {
-            'agent': self.name,
-            'timestamp': datetime.now().isoformat(),
-            'market_analysis': analysis,
-            'config_seed': config.unique_seed
-        }
+        try:
+            analysis_json = await self.ai_client.claude_request(prompt, max_tokens=4000)
+            
+            # Parse JSON response
+            import json
+            try:
+                analysis_data = json.loads(analysis_json)
+            except json.JSONDecodeError:
+                # Fallback if Claude returns non-JSON
+                analysis_data = {
+                    "raw_analysis": analysis_json,
+                    "status": "parsed_as_text"
+                }
+            
+            logger.info("Market analysis completed successfully")
+            
+            return {
+                'agent': self.name,
+                'timestamp': datetime.now().isoformat(),
+                'status': 'completed',
+                'market_analysis': analysis_data,
+                'config_seed': config.unique_seed,
+                'location': config.location,
+                'business_type': config.business_type
+            }
+            
+        except Exception as e:
+            logger.error(f"Market analysis failed: {str(e)}")
+            return {
+                'agent': self.name,
+                'timestamp': datetime.now().isoformat(),
+                'status': 'failed',
+                'error': str(e),
+                'config_seed': config.unique_seed
+            }
 
 class OpportunityAnalyzerAgent:
     """Agent 2: Identifies specific opportunities and niches"""
@@ -836,16 +905,43 @@ class SEOAgentOrchestrator:
             deployment = await self.agents['deployment'].prepare_deployment(qa, code, config)
             self.results['deployment'] = deployment
             
+            # GENERATE ACTUAL WEBSITE FILES
+            logger.info("Generating actual website files...")
+            website_generator = WebsiteFileGenerator()
+            
+            # Prepare agent results for file generation
+            agent_results = {
+                'market_scanner': market_data,
+                'content_generator': content,
+                'design_system': design,
+                'seo_optimizer': seo,
+                'deployment': deployment
+            }
+            
+            # Generate complete website
+            website_files = website_generator.generate_complete_website(
+                agent_results, 
+                asdict(config)
+            )
+            
             # Compile final results
             final_result = {
                 'project_config': asdict(config),
                 'generation_timestamp': datetime.now().isoformat(),
                 'agent_results': self.results,
-                'success': True,
-                'message': 'Complete website generated successfully by all 10 agents'
+                'website_files': website_files,
+                'success': website_files.get('success', False),
+                'message': 'Complete website generated successfully by all 10 agents',
+                'download_ready': website_files.get('success', False),
+                'zip_path': website_files.get('zip_path'),
+                'project_dir': website_files.get('project_dir')
             }
             
-            logger.info("Website generation completed successfully!")
+            if website_files.get('success'):
+                logger.info(f"Website files generated successfully at: {website_files.get('project_dir')}")
+            else:
+                logger.error(f"Website file generation failed: {website_files.get('error')}")
+            
             return final_result
             
         except Exception as e:
@@ -963,17 +1059,74 @@ def get_task_status(task_id):
 
 @app.route('/api/download/<task_id>')
 def download_website(task_id):
-    """Download generated website files"""
+    """Download generated website files as ZIP"""
     task = generate_website_task.AsyncResult(task_id)
     
     if task.state == 'SUCCESS':
-        # In production, you would create a ZIP file of all generated assets
-        # For now, return the JSON result
-        return jsonify(task.result)
+        result = task.result
+        
+        # Check if website files were generated successfully
+        if result.get('download_ready') and result.get('zip_path'):
+            zip_path = result['zip_path']
+            
+            # Verify file exists
+            if os.path.exists(zip_path):
+                try:
+                    project_name = result.get('website_files', {}).get('project_name', 'website')
+                    return send_file(
+                        zip_path,
+                        as_attachment=True,
+                        download_name=f"{project_name}.zip",
+                        mimetype='application/zip'
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending file: {str(e)}")
+                    return jsonify({'error': 'Error downloading file'}), 500
+            else:
+                return jsonify({'error': 'Website files not found'}), 404
+        else:
+            return jsonify({
+                'error': 'Website generation completed but files not ready for download',
+                'details': result.get('website_files', {})
+            }), 400
     else:
         return jsonify({
-            'error': 'Website generation not completed yet'
+            'error': 'Website generation not completed yet',
+            'state': task.state
         }), 400
+
+@app.route('/api/preview/<task_id>')
+def preview_website(task_id):
+    """Get preview of generated website"""
+    task = generate_website_task.AsyncResult(task_id)
+    
+    if task.state == 'SUCCESS':
+        result = task.result
+        if result.get('success') and result.get('agent_results'):
+            # Return content for preview
+            content_data = result['agent_results'].get('content', {})
+            return jsonify({
+                'success': True,
+                'content_preview': content_data.get('content_sections', {}),
+                'project_config': result.get('project_config', {}),
+                'generation_timestamp': result.get('generation_timestamp')
+            })
+        else:
+            return jsonify({'error': 'Website generation failed'}), 400
+    else:
+        return jsonify({
+            'error': 'Website not ready for preview',
+            'state': task.state
+        }), 400
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'service': 'SEO Agent System'
+    })
 
 if __name__ == '__main__':
     # For development

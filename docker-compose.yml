@@ -1,0 +1,112 @@
+# =====================================
+# DOCKER-COMPOSE.YML - PRODUCTION DEPLOYMENT
+# =====================================
+# Complete production stack for Digital Ocean deployment
+
+version: '3.8'
+
+services:
+  # Redis for Celery task queue and caching
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - seo_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main SEO Agent Application
+  seo-agent:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLASK_ENV=production
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+    volumes:
+      - website_files:/tmp/generated_websites
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - seo_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A main.celery worker --loglevel=info --concurrency=2
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    volumes:
+      - website_files:/tmp/generated_websites
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - seo_network
+
+  # Celery Flower for monitoring (optional)
+  celery-flower:
+    build: .
+    restart: unless-stopped
+    command: celery -A main.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - seo_network
+
+  # Nginx reverse proxy and static file server
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - website_files:/var/www/generated:ro
+      - ./frontend:/var/www/html:ro
+    depends_on:
+      - seo-agent
+    networks:
+      - seo_network
+
+volumes:
+  redis_data:
+    driver: local
+  website_files:
+    driver: local
+
+networks:
+  seo_network:
+    driver: bridge

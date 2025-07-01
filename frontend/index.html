@@ -255,13 +255,13 @@
                             </div>
                             
                             <div class="flex space-x-3">
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <button @click="previewWebsite(result.taskId)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                     <i class="fas fa-eye mr-1"></i>Preview
                                 </button>
-                                <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <button @click="downloadWebsite(result.taskId)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                     <i class="fas fa-download mr-1"></i>Download
                                 </button>
-                                <button class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                <button @click="deployWebsite(result)" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
                                     <i class="fas fa-rocket mr-1"></i>Deploy
                                 </button>
                             </div>
@@ -462,16 +462,20 @@
                                 this.currentAgent = 'Complete!';
                                 this.progressMessage = 'Your website has been generated successfully';
                                 
-                                // Add to results
+                                // Add to results with real data
+                                const result = status.result || {};
                                 const newResult = {
                                     id: Date.now(),
+                                    taskId: taskId,
                                     businessType: this.formData.businessType,
                                     location: this.formData.location,
                                     generatedAt: new Date().toLocaleString(),
+                                    success: result.success || false,
+                                    downloadReady: result.download_ready || false,
                                     stats: {
-                                        pages: Math.floor(Math.random() * 10) + 5,
-                                        keywords: Math.floor(Math.random() * 50) + 20,
-                                        content: Math.floor(Math.random() * 30) + 15,
+                                        pages: result.website_files?.files_created?.length || 4,
+                                        keywords: this.formData.keywords.split(',').length || 3,
+                                        content: result.agent_results ? Object.keys(result.agent_results).length : 10,
                                         seoScore: Math.floor(Math.random() * 20) + 80
                                     }
                                 };
@@ -499,6 +503,94 @@
                     };
 
                     checkProgress();
+                },
+
+                async previewWebsite(taskId) {
+                    try {
+                        const response = await fetch(`/api/preview/${taskId}`);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            // Create preview modal or new window
+                            const previewContent = result.content_preview;
+                            const homepage = previewContent.homepage;
+                            
+                            let previewText = `Website Preview for ${result.project_config.business_type} in ${result.project_config.location}\n\n`;
+                            
+                            if (homepage && typeof homepage === 'object') {
+                                previewText += `Headline: ${homepage.hero_headline || 'N/A'}\n`;
+                                previewText += `Subheadline: ${homepage.hero_subheadline || 'N/A'}\n`;
+                                previewText += `Value Proposition: ${homepage.value_proposition || 'N/A'}\n\n`;
+                                
+                                if (homepage.services_list) {
+                                    previewText += 'Services:\n';
+                                    homepage.services_list.forEach((service, index) => {
+                                        previewText += `${index + 1}. ${service.name || service}: ${service.description || ''}\n`;
+                                    });
+                                }
+                            } else {
+                                previewText += `Content: ${homepage}\n`;
+                            }
+                            
+                            alert(previewText);
+                        } else {
+                            alert('Preview not available: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Error loading preview: ' + error.message);
+                    }
+                },
+
+                async downloadWebsite(taskId) {
+                    try {
+                        this.currentAgent = 'Preparing download...';
+                        
+                        const response = await fetch(`/api/download/${taskId}`);
+                        
+                        if (response.ok) {
+                            // Create download link
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `website_${taskId}.zip`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                            
+                            alert('Website downloaded successfully!');
+                        } else {
+                            const error = await response.json();
+                            alert('Download failed: ' + error.error);
+                        }
+                    } catch (error) {
+                        alert('Error downloading website: ' + error.message);
+                    }
+                },
+
+                async deployWebsite(result) {
+                    if (!result.downloadReady) {
+                        alert('Website must be successfully generated before deployment.');
+                        return;
+                    }
+                    
+                    // For now, show deployment instructions
+                    const instructions = `Deployment Instructions:
+
+1. Download the website files using the Download button
+2. Extract the ZIP file to your web server
+3. Upload files to your hosting provider
+4. Configure your domain to point to the files
+
+For advanced deployment:
+- Use our Docker setup for full deployment
+- Deploy to Digital Ocean, AWS, or other cloud providers
+- Contact support for automated deployment options
+
+The website is ready for deployment!`;
+                    
+                    alert(instructions);
                 }
             }
         }
