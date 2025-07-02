@@ -967,6 +967,13 @@ try:
 except ImportError:
     logger.warning("Workshop API not found, workshop mode disabled")
 
+# Import and register enhanced workshop blueprint
+try:
+    from enhanced_workshop_api import enhanced_workshop_bp
+    app.register_blueprint(enhanced_workshop_bp)
+except ImportError:
+    logger.warning("Enhanced workshop API not found, enhanced features disabled")
+
 # Celery configuration for background tasks
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 app.config['CELERY_RESULT_BACKEND'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -1006,6 +1013,11 @@ def index():
 def workshop():
     """Serve the workshop interface"""
     return send_from_directory('frontend', 'workshop.html')
+
+@app.route('/workshop-pro')
+def workshop_pro():
+    """Serve the enhanced workshop interface with opportunity finder"""
+    return send_from_directory('frontend', 'workshop_enhanced.html')
 
 @app.route('/api/generate', methods=['POST'])
 def generate_website():

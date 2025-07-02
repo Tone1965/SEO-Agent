@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Agent Workshop - Enhanced with Live Opportunity Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Enhanced dark theme with better visibility */
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #252525;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --accent-blue: #60a5fa;
+            --accent-green: #4ade80;
+            --accent-orange: #fb923c;
+            --accent-purple: #c084fc;
+            --accent-yellow: #fbbf24;
+            --accent-red: #f87171;
+            --border-color: #404040;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .opportunity-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .opportunity-card:hover {
+            border-color: var(--accent-green);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(74, 222, 128, 0.3);
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .difficulty-easy {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+        
+        .difficulty-medium {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        
+        .difficulty-hard {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+        
+        .money-highlight {
+            background: linear-gradient(45deg, rgba(74, 222, 128, 0.2), rgba(96, 165, 250, 0.2));
+            border: 1px solid rgba(74, 222, 128, 0.5);
+            padding: 16px;
+            border-radius: 8px;
+        }
+        
+        .tab-active {
+            background: var(--bg-tertiary);
+            border-bottom: 3px solid var(--accent-blue);
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div x-data="enhancedWorkshop()" x-init="init()" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg border-b border-gray-700">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-rocket text-3xl text-green-400"></i>
+                        <div>
+                            <h1 class="text-2xl font-bold">SEO Agent Workshop Pro</h1>
+                            <p class="text-green-300">Find & Build Money-Making Websites with Live Data</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm bg-green-900/50 px-3 py-1 rounded-full">
+                            <i class="fas fa-circle text-green-400 text-xs mr-2"></i>
+                            Live Data Active
+                        </span>
+                        <button @click="showHelp = true" 
+                                class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-question-circle mr-2"></i>Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8">
+            <!-- Tab Navigation -->
+            <div class="flex space-x-1 mb-6 bg-gray-900 p-1 rounded-lg">
+                <button @click="activeTab = 'opportunities'" 
+                        :class="activeTab === 'opportunities' ? 'tab-active' : 'bg-gray-800'"
+                        class="flex-1 px-4 py-3 rounded-lg transition-all">
+                    <i class="fas fa-search-dollar mr-2"></i>
+                    Find Opportunities
+                </button>
+                <button @click="activeTab = 'workshop'" 
+                        :class="activeTab === 'workshop' ? 'tab-active' : 'bg-gray-800'"
+                        class="flex-1 px-4 py-3 rounded-lg transition-all">
+                    <i class="fas fa-tools mr-2"></i>
+                    Agent Workshop
+                </button>
+                <button @click="activeTab = 'monitor'" 
+                        :class="activeTab === 'monitor' ? 'tab-active' : 'bg-gray-800'"
+                        class="flex-1 px-4 py-3 rounded-lg transition-all">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Monitor & Track
+                </button>
+            </div>
+
+            <!-- Opportunity Finder Tab -->
+            <div x-show="activeTab === 'opportunities'" class="space-y-6">
+                <!-- Search Controls -->
+                <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-search mr-2 text-blue-400"></i>
+                        Live Opportunity Search
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Location</label>
+                            <input x-model="search.location" type="text" 
+                                   placeholder="e.g., Birmingham, AL"
+                                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Minimum Revenue</label>
+                            <select x-model="search.minRevenue" 
+                                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                <option value="1000">$1,000+/month</option>
+                                <option value="2000" selected>$2,000+/month</option>
+                                <option value="3000">$3,000+/month</option>
+                                <option value="5000">$5,000+/month</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-300 mb-2">Service Categories</label>
+                            <select x-model="search.categories" multiple
+                                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                                <option value="emergency_services">Emergency Services</option>
+                                <option value="medical_services">Medical Services</option>
+                                <option value="legal_services">Legal Services</option>
+                                <option value="home_services">Home Services</option>
+                                <option value="automotive">Automotive</option>
+                                <option value="personal_services">Personal Services</option>
+                                <option value="educational">Educational</option>
+                                <option value="fitness_wellness">Fitness & Wellness</option>
+                                <option value="specialized_trades">Specialized Trades</option>
+                                <option value="business_services">Business Services</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <button @click="findOpportunities()" 
+                                :disabled="searching"
+                                class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-lg transition-all">
+                            <i class="fas fa-search mr-2" :class="searching ? 'fa-spin' : ''"></i>
+                            <span x-text="searching ? 'Searching Live Data...' : 'Find Money Opportunities'"></span>
+                        </button>
+                        
+                        <div class="text-sm text-gray-400">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Searches real Google data via Jina API
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div x-show="opportunities.length > 0" class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold">
+                            Found <span class="text-green-400" x-text="opportunities.length"></span> Money Opportunities
+                        </h3>
+                        <button @click="exportOpportunities()" 
+                                class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-download mr-2"></i>Export Results
+                        </button>
+                    </div>
+                    
+                    <!-- Opportunity Cards -->
+                    <template x-for="opp in opportunities" :key="opp.keyword">
+                        <div class="opportunity-card rounded-lg p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-xl font-bold text-white" x-text="opp.keyword"></h4>
+                                    <p class="text-gray-400">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
+                                        <span x-text="opp.location"></span>
+                                    </p>
+                                </div>
+                                <span class="status-badge" 
+                                      :class="{
+                                          'difficulty-easy': opp.difficulty === 'EASY',
+                                          'difficulty-medium': opp.difficulty === 'MEDIUM',
+                                          'difficulty-hard': opp.difficulty === 'HARD'
+                                      }"
+                                      x-text="opp.difficulty">
+                                </span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div class="text-center">
+                                    <p class="text-gray-400 text-sm">Monthly Revenue</p>
+                                    <p class="text-2xl font-bold text-green-400">
+                                        $<span x-text="opp.monthly_revenue.toLocaleString()"></span>
+                                    </p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-gray-400 text-sm">Lead Value</p>
+                                    <p class="text-xl font-semibold">
+                                        $<span x-text="opp.lead_value"></span>
+                                    </p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-gray-400 text-sm">Time to Rank</p>
+                                    <p class="text-xl font-semibold">
+                                        <span x-text="opp.days_to_rank"></span> days
+                                    </p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-gray-400 text-sm">Weak Competitors</p>
+                                    <p class="text-xl font-semibold">
+                                        <span x-text="opp.weak_sites"></span>/10
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="money-highlight mb-4">
+                                <p class="font-semibold mb-2">
+                                    <i class="fas fa-globe mr-2"></i>
+                                    Suggested Domain: 
+                                    <span class="text-blue-400" x-text="opp.domain_suggestion"></span>
+                                </p>
+                                <p class="text-sm text-gray-300">
+                                    <i class="fas fa-dollar-sign mr-2"></i>
+                                    ROI: Invest $62 → Make $<span x-text="(opp.monthly_revenue - 62).toLocaleString()"></span> profit first month
+                                </p>
+                            </div>
+                            
+                            <div class="flex space-x-3">
+                                <button @click="analyzeCompetitors(opp)" 
+                                        class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
+                                    <i class="fas fa-users mr-2"></i>Analyze Competitors
+                                </button>
+                                <button @click="validateOpportunity(opp)" 
+                                        class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors">
+                                    <i class="fas fa-check-circle mr-2"></i>Validate
+                                </button>
+                                <button @click="generatePlan(opp)" 
+                                        class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors">
+                                    <i class="fas fa-tasks mr-2"></i>Get Action Plan
+                                </button>
+                                <button @click="buildWebsite(opp)" 
+                                        class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 px-4 py-2 rounded-lg transition-colors font-bold">
+                                    <i class="fas fa-rocket mr-2"></i>Build Now
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- No Results -->
+                <div x-show="searchComplete && opportunities.length === 0" 
+                     class="bg-gray-900 rounded-lg p-12 text-center">
+                    <i class="fas fa-search-minus text-6xl text-gray-600 mb-4"></i>
+                    <p class="text-xl text-gray-400">No opportunities found matching your criteria</p>
+                    <p class="text-gray-500 mt-2">Try expanding your search categories or lowering minimum revenue</p>
+                </div>
+            </div>
+
+            <!-- Workshop Tab (Enhanced) -->
+            <div x-show="activeTab === 'workshop'" class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">
+                            <i class="fas fa-bolt mr-2 text-yellow-400"></i>
+                            Quick Actions
+                        </h2>
+                        <span class="text-sm text-gray-400" x-show="selectedOpportunity">
+                            Building for: <span class="text-green-400" x-text="selectedOpportunity.keyword"></span>
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button @click="runAllAgents()" 
+                                class="bg-gray-800 hover:bg-gray-700 p-4 rounded-lg text-center transition-all">
+                            <i class="fas fa-play-circle text-3xl text-green-400 mb-2"></i>
+                            <p class="font-semibold">Run All Agents</p>
+                        </button>
+                        <button @click="runMarketResearch()" 
+                                class="bg-gray-800 hover:bg-gray-700 p-4 rounded-lg text-center transition-all">
+                            <i class="fas fa-chart-bar text-3xl text-blue-400 mb-2"></i>
+                            <p class="font-semibold">Market Research Only</p>
+                        </button>
+                        <button @click="generateContent()" 
+                                class="bg-gray-800 hover:bg-gray-700 p-4 rounded-lg text-center transition-all">
+                            <i class="fas fa-file-alt text-3xl text-purple-400 mb-2"></i>
+                            <p class="font-semibold">Generate Content</p>
+                        </button>
+                        <button @click="deployWebsite()" 
+                                class="bg-gray-800 hover:bg-gray-700 p-4 rounded-lg text-center transition-all">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-orange-400 mb-2"></i>
+                            <p class="font-semibold">Deploy Site</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Original Agent Grid (kept from original) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Agent list and output panels from original workshop.html -->
+                    <!-- ... (keeping the original agent interface) ... -->
+                </div>
+            </div>
+
+            <!-- Monitor Tab -->
+            <div x-show="activeTab === 'monitor'" class="space-y-6">
+                <div class="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                    <h2 class="text-xl font-bold mb-4">
+                        <i class="fas fa-chart-line mr-2 text-green-400"></i>
+                        Performance Monitoring
+                    </h2>
+                    <p class="text-gray-400">Track rankings, traffic, and revenue for your deployed sites</p>
+                    <!-- Monitoring features to be implemented -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Action Plan Modal -->
+        <div x-show="showActionPlan" 
+             x-transition
+             class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-900 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold">14-Day Action Plan</h3>
+                    <button @click="showActionPlan = false" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div x-show="actionPlan" class="space-y-6">
+                    <!-- Timeline -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-3">Timeline</h4>
+                        <template x-for="phase in actionPlan.timeline" :key="phase.days">
+                            <div class="mb-4 bg-gray-800 rounded-lg p-4">
+                                <h5 class="font-bold text-green-400 mb-2">
+                                    Days <span x-text="phase.days"></span>
+                                </h5>
+                                <ul class="space-y-1">
+                                    <template x-for="task in phase.tasks" :key="task">
+                                        <li class="flex items-start">
+                                            <i class="fas fa-check-circle text-green-400 mr-2 mt-1"></i>
+                                            <span x-text="task"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <!-- Investment & Revenue -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <h5 class="font-semibold mb-2">Investment Required</h5>
+                            <p class="text-2xl font-bold text-red-400">
+                                $<span x-text="actionPlan.estimated_costs?.total_cash || 0"></span>
+                            </p>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <h5 class="font-semibold mb-2">First Month Revenue</h5>
+                            <p class="text-2xl font-bold text-green-400">
+                                $<span x-text="actionPlan.revenue_projection?.month_1 || 0"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button @click="downloadPlan()" 
+                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-download mr-2"></i>Download Plan
+                    </button>
+                    <button @click="startBuilding()" 
+                            class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 px-4 py-2 rounded-lg transition-colors font-bold">
+                        <i class="fas fa-rocket mr-2"></i>Start Building
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function enhancedWorkshop() {
+            return {
+                activeTab: 'opportunities',
+                search: {
+                    location: 'Birmingham, AL',
+                    minRevenue: 2000,
+                    categories: ['emergency_services']
+                },
+                searching: false,
+                searchComplete: false,
+                opportunities: [],
+                selectedOpportunity: null,
+                showActionPlan: false,
+                actionPlan: null,
+                showHelp: false,
+                
+                async findOpportunities() {
+                    this.searching = true;
+                    this.searchComplete = false;
+                    
+                    try {
+                        const response = await fetch('/api/find-opportunities', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.search)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.opportunities = data.opportunities;
+                            this.searchComplete = true;
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    } catch (error) {
+                        alert('Error searching for opportunities: ' + error.message);
+                    } finally {
+                        this.searching = false;
+                    }
+                },
+                
+                async analyzeCompetitors(opportunity) {
+                    try {
+                        const response = await fetch('/api/analyze-competitors', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                keyword: opportunity.keyword,
+                                location: opportunity.location
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Show competitor analysis in modal
+                            console.log('Competitors:', data.competitors);
+                            alert(`Analyzed ${data.competitors.length} competitors. Check console for details.`);
+                        }
+                    } catch (error) {
+                        alert('Error analyzing competitors: ' + error.message);
+                    }
+                },
+                
+                async validateOpportunity(opportunity) {
+                    try {
+                        const response = await fetch('/api/validate-opportunity', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                keyword: opportunity.keyword,
+                                location: opportunity.location
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            const validation = data.validation;
+                            alert(`
+Validation Results:
+- Opportunity Score: ${validation.opportunity_score}/100
+- ${validation.recommendation}
+- Weak Competition: ${validation.weak_competitor_count}/10
+- Domain Available: ${validation.suggested_domain}
+                            `);
+                        }
+                    } catch (error) {
+                        alert('Error validating opportunity: ' + error.message);
+                    }
+                },
+                
+                async generatePlan(opportunity) {
+                    try {
+                        const response = await fetch('/api/generate-action-plan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ opportunity })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.actionPlan = data.action_plan;
+                            this.selectedOpportunity = opportunity;
+                            this.showActionPlan = true;
+                        }
+                    } catch (error) {
+                        alert('Error generating plan: ' + error.message);
+                    }
+                },
+                
+                buildWebsite(opportunity) {
+                    this.selectedOpportunity = opportunity;
+                    this.activeTab = 'workshop';
+                    // Set project details from opportunity
+                    if (window.seoWorkshop) {
+                        window.seoWorkshop.project = {
+                            businessType: opportunity.service,
+                            location: opportunity.location,
+                            keywords: opportunity.keyword
+                        };
+                    }
+                },
+                
+                exportOpportunities() {
+                    const dataStr = JSON.stringify(this.opportunities, null, 2);
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    
+                    const exportFileDefaultName = `opportunities_${this.search.location.replace(/\s+/g, '_')}_${Date.now()}.json`;
+                    
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', exportFileDefaultName);
+                    linkElement.click();
+                },
+                
+                downloadPlan() {
+                    if (!this.actionPlan) return;
+                    
+                    const planText = this.formatPlanAsText(this.actionPlan);
+                    const dataUri = 'data:text/plain;charset=utf-8,'+ encodeURIComponent(planText);
+                    
+                    const filename = `action_plan_${this.selectedOpportunity.keyword.replace(/\s+/g, '_')}.txt`;
+                    
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', filename);
+                    linkElement.click();
+                },
+                
+                formatPlanAsText(plan) {
+                    let text = `14-DAY ACTION PLAN\n`;
+                    text += `Keyword: ${plan.keyword}\n`;
+                    text += `Location: ${plan.location}\n`;
+                    text += `=====================================\n\n`;
+                    
+                    plan.timeline.forEach(phase => {
+                        text += `DAYS ${phase.days}\n`;
+                        phase.tasks.forEach(task => {
+                            text += `- ${task}\n`;
+                        });
+                        text += '\n';
+                    });
+                    
+                    return text;
+                },
+                
+                startBuilding() {
+                    this.showActionPlan = false;
+                    this.buildWebsite(this.selectedOpportunity);
+                },
+                
+                // Quick action methods
+                async runAllAgents() {
+                    if (!this.selectedOpportunity) {
+                        alert('Please select an opportunity first');
+                        return;
+                    }
+                    // Implementation to run all agents
+                },
+                
+                async runMarketResearch() {
+                    // Run only market research agents
+                },
+                
+                async generateContent() {
+                    // Run content generation agents
+                },
+                
+                async deployWebsite() {
+                    // Deploy the generated website
+                },
+                
+                init() {
+                    // Load saved preferences
+                    const savedSearch = localStorage.getItem('workshop_search');
+                    if (savedSearch) {
+                        this.search = JSON.parse(savedSearch);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

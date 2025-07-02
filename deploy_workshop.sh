@@ -1,0 +1,22 @@
+#!/bin/bash
+# Deploy workshop interface to Digital Ocean
+
+echo "🚀 Deploying Workshop Interface to Digital Ocean..."
+echo ""
+echo "Run these commands on your server (142.93.194.81):"
+echo ""
+echo "cd /root/SEO-Agent"
+echo "git pull"
+echo "docker-compose down"
+echo "docker-compose build --no-cache seo-agent"
+echo "docker-compose up -d"
+echo ""
+echo "After deployment, access your workshop at:"
+echo "http://142.93.194.81/workshop"
+echo ""
+echo "The workshop gives you:"
+echo "✅ Individual control over each AI agent"
+echo "✅ See outputs before proceeding"
+echo "✅ Edit/approve agent results"
+echo "✅ Beautiful dark theme"
+echo "✅ Full visibility into the AI process"
