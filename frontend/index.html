@@ -72,19 +72,8 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-building mr-2"></i>Business Type
                             </label>
-                            <select x-model="formData.businessType" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="">Select Business Type</option>
-                                <option value="HVAC Services">HVAC Services</option>
-                                <option value="Plumbing">Plumbing</option>
-                                <option value="Roofing">Roofing</option>
-                                <option value="Landscaping">Landscaping</option>
-                                <option value="Cleaning Services">Cleaning Services</option>
-                                <option value="Home Renovation">Home Renovation</option>
-                                <option value="Electrical">Electrical</option>
-                                <option value="Pest Control">Pest Control</option>
-                                <option value="Pool Services">Pool Services</option>
-                                <option value="Moving Services">Moving Services</option>
-                            </select>
+                            <input x-model="formData.businessType" type="text" placeholder="e.g., Flower Shop, Restaurant, Auto Repair" 
+                                   class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
 
                         <!-- Location -->
@@ -106,42 +95,25 @@
                             <p class="text-sm text-gray-500 mt-1">Separate keywords with commas</p>
                         </div>
 
-                        <!-- Competition Level -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-chart-line mr-2"></i>Competition Level
-                            </label>
-                            <select x-model="formData.competitionLevel" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="low">Low Competition</option>
-                                <option value="medium">Medium Competition</option>
-                                <option value="high">High Competition</option>
-                            </select>
-                        </div>
-
-                        <!-- Budget Range -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-dollar-sign mr-2"></i>Budget Range
-                            </label>
-                            <select x-model="formData.budgetRange" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="$1,000-$3,000">$1,000 - $3,000</option>
-                                <option value="$3,000-$5,000">$3,000 - $5,000</option>
-                                <option value="$5,000-$10,000">$5,000 - $10,000</option>
-                                <option value="$10,000+">$10,000+</option>
-                            </select>
-                        </div>
-
-                        <!-- Timeline -->
+                        <!-- Competitor Analysis with Jina -->
                         <div class="md:col-span-2">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-clock mr-2"></i>Timeline
+                                <i class="fas fa-globe mr-2"></i>Analyze Competitor (Optional)
                             </label>
-                            <select x-model="formData.timeline" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="ASAP">ASAP (Rush)</option>
-                                <option value="1-2 weeks">1-2 weeks</option>
-                                <option value="2-4 weeks">2-4 weeks</option>
-                                <option value="1-2 months">1-2 months</option>
-                            </select>
+                            <div class="flex space-x-2">
+                                <input x-model="formData.competitorUrl" 
+                                       type="url" 
+                                       placeholder="https://competitor-site.com" 
+                                       class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <button @click="scrapeCompetitor()" 
+                                        type="button"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors">
+                                    <i class="fas fa-robot mr-2"></i>Scrape with Jina
+                                </button>
+                            </div>
+                            <div x-show="competitorData" class="mt-3 p-4 bg-gray-50 rounded-lg">
+                                <p class="text-sm text-gray-600" x-text="competitorData"></p>
+                            </div>
                         </div>
                     </div>
 
@@ -295,15 +267,14 @@
                     businessType: '',
                     location: '',
                     keywords: '',
-                    competitionLevel: 'medium',
-                    budgetRange: '$3,000-$5,000',
-                    timeline: '2-4 weeks'
+                    competitorUrl: ''
                 },
+                competitorData: null,
                 isGenerating: false,
                 progress: 0,
                 currentAgent: 'Waiting to start...',
                 progressMessage: 'Ready to generate your website',
-                totalGenerated: 42,
+                totalGenerated: 0,
                 results: [],
                 agents: [
                     {
@@ -395,9 +366,7 @@
                             business_type: this.formData.businessType,
                             location: this.formData.location,
                             target_keywords: this.formData.keywords.split(',').map(k => k.trim()),
-                            competition_level: this.formData.competitionLevel,
-                            budget_range: this.formData.budgetRange,
-                            timeline: this.formData.timeline
+                            competitor_url: this.formData.competitorUrl || null
                         };
 
                         // Start generation
@@ -591,6 +560,24 @@ For advanced deployment:
 The website is ready for deployment!`;
                     
                     alert(instructions);
+                },
+
+                async scrapeCompetitor() {
+                    if (!this.formData.competitorUrl) {
+                        alert('Please enter a competitor URL');
+                        return;
+                    }
+                    
+                    try {
+                        this.competitorData = 'Analyzing competitor site...';
+                        const response = await fetch('https://r.jina.ai/' + this.formData.competitorUrl);
+                        const text = await response.text();
+                        
+                        // Show first 500 characters as preview
+                        this.competitorData = text.substring(0, 500) + '...';
+                    } catch (error) {
+                        this.competitorData = 'Error scraping site: ' + error.message;
+                    }
                 }
             }
         }
