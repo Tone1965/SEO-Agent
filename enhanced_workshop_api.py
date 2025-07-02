@@ -83,25 +83,45 @@ def find_opportunities():
         categories = data.get('categories', ['emergency_services'])
         min_revenue = data.get('min_revenue', 2000)
         
+        # Handle custom service searches
+        custom_services = data.get('services', [])
+        custom_modifiers = data.get('modifiers', MONEY_MODIFIERS[:5])
+        
         all_opportunities = []
         
-        # Search each category
-        for category in categories:
-            services = SERVICE_CATEGORIES.get(category, [])
-            
-            for service in services[:3]:  # Top 3 per category to start
-                for modifier in MONEY_MODIFIERS[:5]:  # Top 5 modifiers
+        # If custom services provided, use those instead of categories
+        if custom_services:
+            for service in custom_services:
+                for modifier in custom_modifiers:
                     keyword = f"{modifier} {service} {location}"
                     
-                    # Use Jina to search
-                    results = jina.search(keyword)
+                    # Use scraper manager with fallback
+                    results = scraper.search(keyword)
                     
-                    if results:
+                    if results and 'error' not in results:
                         # Analyze opportunity
                         opp = analyze_opportunity(keyword, results, location, service, modifier)
                         
                         if opp['monthly_revenue'] >= min_revenue and opp['worth_building']:
                             all_opportunities.append(opp)
+        else:
+            # Original category-based search
+            for category in categories:
+                services = SERVICE_CATEGORIES.get(category, [])
+                
+                for service in services[:3]:  # Top 3 per category to start
+                    for modifier in custom_modifiers:
+                        keyword = f"{modifier} {service} {location}"
+                        
+                        # Use scraper manager with fallback
+                        results = scraper.search(keyword)
+                        
+                        if results and 'error' not in results:
+                            # Analyze opportunity
+                            opp = analyze_opportunity(keyword, results, location, service, modifier)
+                            
+                            if opp['monthly_revenue'] >= min_revenue and opp['worth_building']:
+                                all_opportunities.append(opp)
         
         # Sort by best opportunities
         all_opportunities.sort(key=lambda x: (x['monthly_revenue'], -x['days_to_rank']), reverse=True)

@@ -1019,6 +1019,11 @@ def workshop_pro():
     """Serve the enhanced workshop interface with opportunity finder"""
     return send_from_directory('frontend', 'workshop_enhanced.html')
 
+@app.route('/workshop-simple')
+def workshop_simple():
+    """Serve the simple workshop interface"""
+    return send_from_directory('frontend', 'workshop_simple.html')
+
 @app.route('/api/generate', methods=['POST'])
 def generate_website():
     """API endpoint to start website generation"""

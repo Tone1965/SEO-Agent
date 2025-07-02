@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO Money Finder - Simple Workshop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0f0f0f;
+            color: #ffffff;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div x-data="simpleWorkshop()" class="min-h-screen">
+        <!-- Simple Header -->
+        <header class="gradient-bg border-b border-gray-800 p-6">
+            <div class="container mx-auto">
+                <h1 class="text-3xl font-bold text-center">
+                    <i class="fas fa-dollar-sign text-green-400"></i>
+                    SEO Money Finder
+                </h1>
+                <p class="text-center text-gray-400 mt-2">Find profitable keywords with real data</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-6 py-8 max-w-4xl">
+            <!-- Simple Search Box -->
+            <div class="bg-gray-900 rounded-lg p-8 border border-gray-800">
+                <h2 class="text-xl font-bold mb-6">What service do you want to research?</h2>
+                
+                <div class="space-y-4">
+                    <!-- Service Input -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Service Type</label>
+                        <input 
+                            x-model="searchQuery" 
+                            type="text" 
+                            placeholder="e.g., plumber, dentist, lawyer, electrician..."
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white"
+                            @keyup.enter="findOpportunities"
+                        >
+                        <p class="text-xs text-gray-500 mt-1">Enter any service type you want to analyze</p>
+                    </div>
+
+                    <!-- Location Input -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Location</label>
+                        <input 
+                            x-model="location" 
+                            type="text" 
+                            placeholder="e.g., Birmingham, AL"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white"
+                            @keyup.enter="findOpportunities"
+                        >
+                    </div>
+
+                    <!-- Search Button -->
+                    <button 
+                        @click="findOpportunities" 
+                        :disabled="searching || !searchQuery || !location"
+                        class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all"
+                    >
+                        <i class="fas fa-search mr-2" :class="searching ? 'fa-spin' : ''"></i>
+                        <span x-text="searching ? 'Searching Real Google Data...' : 'Find Money Opportunities'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div x-show="opportunities.length > 0" class="mt-8 space-y-4">
+                <h3 class="text-xl font-bold">
+                    Found <span class="text-green-400" x-text="opportunities.length"></span> Opportunities
+                </h3>
+
+                <template x-for="opp in opportunities" :key="opp.keyword">
+                    <div class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-green-500 transition-all">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 class="text-lg font-bold" x-text="opp.keyword"></h4>
+                                <p class="text-gray-400 text-sm" x-text="opp.location"></p>
+                            </div>
+                            <span class="bg-green-900 text-green-400 px-3 py-1 rounded-full text-sm">
+                                $<span x-text="opp.monthly_revenue?.toLocaleString() || '0'"></span>/mo
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p class="text-gray-500 text-sm">Difficulty</p>
+                                <p class="font-bold" x-text="opp.difficulty || 'Unknown'"></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-sm">Lead Value</p>
+                                <p class="font-bold">$<span x-text="opp.lead_value || '0'"></span></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-sm">Days to Rank</p>
+                                <p class="font-bold" x-text="opp.days_to_rank || '0'"></p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-800">
+                            <p class="text-sm text-gray-400">
+                                <i class="fas fa-globe mr-2"></i>
+                                Suggested domain: <span class="text-blue-400" x-text="opp.domain_suggestion || 'N/A'"></span>
+                            </p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="searching" class="mt-8 text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-600"></i>
+                <p class="mt-4 text-gray-400">Analyzing competition with live data...</p>
+            </div>
+
+            <!-- No Results -->
+            <div x-show="searchComplete && opportunities.length === 0" class="mt-8 bg-gray-900 rounded-lg p-8 text-center">
+                <i class="fas fa-search-minus text-4xl text-gray-600"></i>
+                <p class="mt-4 text-gray-400">No opportunities found. Try a different service or location.</p>
+            </div>
+
+            <!-- Error State -->
+            <div x-show="error" class="mt-8 bg-red-900/20 border border-red-800 rounded-lg p-4">
+                <p class="text-red-400" x-text="error"></p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function simpleWorkshop() {
+            return {
+                searchQuery: '',
+                location: 'Birmingham, AL',
+                searching: false,
+                searchComplete: false,
+                opportunities: [],
+                error: '',
+
+                async findOpportunities() {
+                    if (!this.searchQuery || !this.location) {
+                        this.error = 'Please enter both service type and location';
+                        return;
+                    }
+
+                    this.searching = true;
+                    this.searchComplete = false;
+                    this.error = '';
+                    this.opportunities = [];
+
+                    try {
+                        // Build search with modifiers
+                        const modifiers = ['emergency', 'weekend', '24 hour', 'sunday', 'after hours'];
+                        const searchData = {
+                            location: this.location,
+                            categories: ['custom'],
+                            services: [this.searchQuery],
+                            modifiers: modifiers
+                        };
+
+                        const response = await fetch('/api/find-opportunities', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(searchData)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.opportunities = data.opportunities || [];
+                            this.searchComplete = true;
+                        } else {
+                            this.error = data.error || 'Search failed';
+                        }
+                    } catch (error) {
+                        this.error = 'Error: ' + error.message;
+                    } finally {
+                        this.searching = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
