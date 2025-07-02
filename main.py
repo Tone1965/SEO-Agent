@@ -960,6 +960,13 @@ class SEOAgentOrchestrator:
 # Flask API for web interface
 app = Flask(__name__)
 
+# Import and register workshop blueprint
+try:
+    from workshop_api import workshop_bp
+    app.register_blueprint(workshop_bp)
+except ImportError:
+    logger.warning("Workshop API not found, workshop mode disabled")
+
 # Celery configuration for background tasks
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 app.config['CELERY_RESULT_BACKEND'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -994,6 +1001,11 @@ def generate_website_task(config_dict):
 def index():
     """Serve the frontend interface"""
     return send_from_directory('frontend', 'index.html')
+
+@app.route('/workshop')
+def workshop():
+    """Serve the workshop interface"""
+    return send_from_directory('frontend', 'workshop.html')
 
 @app.route('/api/generate', methods=['POST'])
 def generate_website():
