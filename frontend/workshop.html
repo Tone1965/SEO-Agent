@@ -10,18 +10,44 @@
     <style>
         /* Dark theme with colorblind-friendly palette */
         :root {
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #252525;
-            --text-primary: #e5e5e5;
-            --text-secondary: #b3b3b3;
-            --accent-blue: #5c9eff;
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #262626;
+            --bg-tertiary: #333333;
+            --text-primary: #f5f5f5;
+            --text-secondary: #d4d4d4;
+            --accent-blue: #60a5fa;
             --accent-green: #4ade80;
             --accent-orange: #fb923c;
             --accent-purple: #c084fc;
             --accent-yellow: #fbbf24;
             --accent-red: #f87171;
-            --border-color: #333333;
+            --border-color: #404040;
+        }
+        
+        /* Light mode */
+        body.light-mode {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f3f4f6;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --border-color: #e5e7eb;
+        }
+        
+        body.light-mode .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        }
+        
+        body.light-mode .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
         body {
@@ -31,17 +57,19 @@
         
         .agent-tool {
             transition: all 0.3s ease;
-            border: 2px solid transparent;
+            border: 2px solid var(--border-color);
             background: var(--bg-secondary);
         }
         .agent-tool:hover {
             transform: translateY(-2px);
             border-color: var(--accent-blue);
-            box-shadow: 0 10px 30px rgba(92, 158, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(96, 165, 250, 0.3);
+            background: var(--bg-tertiary);
         }
         .agent-tool.active {
             border-color: var(--accent-green);
-            background: rgba(74, 222, 128, 0.1);
+            background: rgba(74, 222, 128, 0.15);
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
         }
         .output-panel {
             max-height: 400px;
@@ -139,6 +167,11 @@
                                 :class="showMode === 'auto' ? 'bg-white/20' : 'bg-white/10'"
                                 class="px-4 py-2 rounded-lg transition-colors hover:bg-white/25">
                             <i class="fas fa-robot mr-2"></i>Auto Mode
+                        </button>
+                        <button @click="toggleTheme()" 
+                                class="bg-white/10 px-4 py-2 rounded-lg transition-colors hover:bg-white/25">
+                            <i :class="darkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2"></i>
+                            <span x-text="darkMode ? 'Light' : 'Dark'"></span>
                         </button>
                     </div>
                 </div>
@@ -338,6 +371,7 @@
             return {
                 showMode: 'workshop',
                 selectedAgent: null,
+                darkMode: true,
                 project: {
                     businessType: '',
                     location: '',
@@ -574,6 +608,21 @@
 
                 runAutoMode() {
                     window.location.href = '/frontend/index.html';
+                },
+
+                toggleTheme() {
+                    this.darkMode = !this.darkMode;
+                    document.body.classList.toggle('light-mode');
+                    localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+                },
+
+                init() {
+                    // Load saved theme preference
+                    const savedTheme = localStorage.getItem('theme');
+                    if (savedTheme === 'light') {
+                        this.darkMode = false;
+                        document.body.classList.add('light-mode');
+                    }
                 }
             }
         }
