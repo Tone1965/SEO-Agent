@@ -228,9 +228,9 @@
                                         <div class="flex items-center mb-2">
                                             <i :class="agent.icon" class="text-2xl mr-3" 
                                                :style="`color: ${agent.color}`"></i>
-                                            <h4 class="font-bold text-gray-100" x-text="agent.name"></h4>
+                                            <h4 class="font-bold" :class="darkMode ? 'text-gray-100' : 'text-gray-800'" x-text="agent.name"></h4>
                                         </div>
-                                        <p class="text-sm text-gray-300 mb-3" x-text="agent.description"></p>
+                                        <p class="text-sm mb-3" :class="darkMode ? 'text-gray-300' : 'text-gray-600'" x-text="agent.description"></p>
                                         
                                         <!-- Agent Controls -->
                                         <div class="flex items-center space-x-2">
@@ -277,8 +277,8 @@
                         
                         <div x-show="selectedAgent" class="space-y-4">
                             <div class="border-b pb-2">
-                                <h4 class="font-semibold text-gray-100" x-text="selectedAgent?.name"></h4>
-                                <p class="text-sm text-gray-300" x-text="selectedAgent?.description"></p>
+                                <h4 class="font-semibold" :class="darkMode ? 'text-gray-100' : 'text-gray-800'" x-text="selectedAgent?.name"></h4>
+                                <p class="text-sm" :class="darkMode ? 'text-gray-300' : 'text-gray-600'" x-text="selectedAgent?.description"></p>
                             </div>
                             
                             <div x-show="selectedAgent?.status === 'running'" class="text-center py-8">
@@ -320,9 +320,18 @@
                         <template x-for="(agent, index) in agents" :key="agent.id">
                             <div class="flex items-center">
                                 <div :class="{
-                                    'bg-green-900/30 border-green-500 text-green-400': agent.status === 'complete',
-                                    'bg-yellow-900/30 border-yellow-500 text-yellow-400': agent.status === 'running',
-                                    'bg-gray-800 border-gray-600 text-gray-300': agent.status === 'idle'
+                                    'bg-green-900/30 border-green-500': agent.status === 'complete' && darkMode,
+                                    'bg-green-100 border-green-500': agent.status === 'complete' && !darkMode,
+                                    'bg-yellow-900/30 border-yellow-500': agent.status === 'running' && darkMode,
+                                    'bg-yellow-100 border-yellow-500': agent.status === 'running' && !darkMode,
+                                    'bg-gray-800 border-gray-600': agent.status === 'idle' && darkMode,
+                                    'bg-gray-200 border-gray-400': agent.status === 'idle' && !darkMode,
+                                    'text-green-400': agent.status === 'complete' && darkMode,
+                                    'text-green-700': agent.status === 'complete' && !darkMode,
+                                    'text-yellow-400': agent.status === 'running' && darkMode,
+                                    'text-yellow-700': agent.status === 'running' && !darkMode,
+                                    'text-gray-300': agent.status === 'idle' && darkMode,
+                                    'text-gray-700': agent.status === 'idle' && !darkMode
                                 }" class="border-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap">
                                     <i :class="agent.icon" class="mr-1"></i>
                                     <span x-text="agent.name"></span>
