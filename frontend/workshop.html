@@ -228,9 +228,9 @@
                                         <div class="flex items-center mb-2">
                                             <i :class="agent.icon" class="text-2xl mr-3" 
                                                :style="`color: ${agent.color}`"></i>
-                                            <h4 class="font-bold text-gray-800" x-text="agent.name"></h4>
+                                            <h4 class="font-bold text-gray-100" x-text="agent.name"></h4>
                                         </div>
-                                        <p class="text-sm text-gray-600 mb-3" x-text="agent.description"></p>
+                                        <p class="text-sm text-gray-300 mb-3" x-text="agent.description"></p>
                                         
                                         <!-- Agent Controls -->
                                         <div class="flex items-center space-x-2">
@@ -277,8 +277,8 @@
                         
                         <div x-show="selectedAgent" class="space-y-4">
                             <div class="border-b pb-2">
-                                <h4 class="font-semibold" x-text="selectedAgent?.name"></h4>
-                                <p class="text-sm text-gray-600" x-text="selectedAgent?.description"></p>
+                                <h4 class="font-semibold text-gray-100" x-text="selectedAgent?.name"></h4>
+                                <p class="text-sm text-gray-300" x-text="selectedAgent?.description"></p>
                             </div>
                             
                             <div x-show="selectedAgent?.status === 'running'" class="text-center py-8">
