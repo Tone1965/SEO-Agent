@@ -41,7 +41,8 @@
         }
         
         body.light-mode .gradient-bg {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.85) 0%, rgba(139, 92, 246, 0.85) 100%),
+                        url('https://cdn.pixabay.com/photo/2018/05/08/08/44/artificial-intelligence-3382507_1280.jpg') center/cover;
         }
         
         body.light-mode .glass-effect {
@@ -88,8 +89,11 @@
             border-radius: 4px;
         }
         .gradient-bg {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.92) 100%),
+                        url('https://cdn.pixabay.com/photo/2018/05/08/08/44/artificial-intelligence-3382507_1280.jpg') center/cover;
             border-bottom: 2px solid var(--accent-blue);
+            position: relative;
+            min-height: 120px;
         }
         .glass-effect {
             background: rgba(255, 255, 255, 0.05);
