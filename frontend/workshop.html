@@ -320,9 +320,9 @@
                         <template x-for="(agent, index) in agents" :key="agent.id">
                             <div class="flex items-center">
                                 <div :class="{
-                                    'bg-green-100 border-green-500': agent.status === 'complete',
-                                    'bg-yellow-100 border-yellow-500': agent.status === 'running',
-                                    'bg-gray-100 border-gray-300': agent.status === 'idle'
+                                    'bg-green-900/30 border-green-500 text-green-400': agent.status === 'complete',
+                                    'bg-yellow-900/30 border-yellow-500 text-yellow-400': agent.status === 'running',
+                                    'bg-gray-800 border-gray-600 text-gray-300': agent.status === 'idle'
                                 }" class="border-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap">
                                     <i :class="agent.icon" class="mr-1"></i>
                                     <span x-text="agent.name"></span>
