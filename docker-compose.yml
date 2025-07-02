@@ -35,6 +35,11 @@ services:
       - FLASK_ENV=production
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+      - ALERT_EMAIL=${ALERT_EMAIL}
+      - ALERT_PHONE=${ALERT_PHONE}
+      - SMTP_EMAIL=${SMTP_EMAIL}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - DAILY_BUDGET=${DAILY_BUDGET}
     volumes:
       - website_files:/tmp/generated_websites
       - ./logs:/app/logs
