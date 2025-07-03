@@ -1140,6 +1140,37 @@ def preview_website(task_id):
             'state': task.state
         }), 400
 
+@app.route('/api/scrape', methods=['POST'])
+def scrape_competitor():
+    """Scrape competitor website using Jina API"""
+    try:
+        data = request.json
+        url = data.get('url')
+        
+        if not url:
+            return jsonify({'error': 'URL required'}), 400
+            
+        # Use Jina to scrape
+        import requests
+        jina_api_key = os.getenv('JINA_API_KEY', '')
+        headers = {"Authorization": f"Bearer {jina_api_key}"} if jina_api_key else {}
+        
+        scrape_url = f"https://r.jina.ai/{url}"
+        response = requests.get(scrape_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            return jsonify({
+                'success': True,
+                'content': response.text[:1000]  # First 1000 chars
+            })
+        else:
+            return jsonify({
+                'error': f'Scraping failed: {response.status_code}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
