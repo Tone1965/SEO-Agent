@@ -1151,9 +1151,16 @@ def scrape_competitor():
             return jsonify({'error': 'Competitor name or URL required'}), 400
             
         import requests
+        import redis
         from urllib.parse import urlparse
         jina_api_key = os.getenv('JINA_API_KEY', '')
         headers = {"Authorization": f"Bearer {jina_api_key}"} if jina_api_key else {}
+        
+        # Connect to Redis
+        redis_client = redis.Redis.from_url(
+            os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
+            decode_responses=True
+        )
         
         # Extract business name from URL or use as-is
         if competitor_input.startswith('http'):
@@ -1162,6 +1169,15 @@ def scrape_competitor():
             business_name = domain.split('.')[0]
         else:
             business_name = competitor_input
+            
+        # Check Redis cache first
+        cache_key = f"jina:competitor:{business_name.lower().replace(' ', '_')}"
+        cached_data = redis_client.get(cache_key)
+        
+        if cached_data:
+            logger.info(f"Found cached data for {business_name}")
+            import json
+            return jsonify(json.loads(cached_data))
             
         # Search across multiple platforms
         search_queries = [
@@ -1197,15 +1213,28 @@ def scrape_competitor():
             except:
                 pass
         
-        return jsonify({
+        result_data = {
             'success': True,
             'business_name': business_name,
             'main_site': main_site_content,
             'presence': all_results,
-            'summary': f"Found {len(all_results)} platform results for {business_name}"
-        })
+            'summary': f"Found {len(all_results)} platform results for {business_name}",
+            'cached': False,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Store in Redis with 1 hour TTL
+        redis_client.setex(
+            cache_key,
+            3600,  # 1 hour TTL
+            json.dumps(result_data)
+        )
+        logger.info(f"Cached data for {business_name} in Redis")
+        
+        return jsonify(result_data)
             
     except Exception as e:
+        logger.error(f"Error in scrape_competitor: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/keywords', methods=['POST'])
@@ -1242,6 +1271,45 @@ def discover_keywords():
             'longtail_keywords': longtail_keywords,
             'golden_opportunities': golden[:10],
             'total_found': len(all_keywords)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/redis-data')
+def view_redis_data():
+    """View all Jina data stored in Redis"""
+    try:
+        import redis
+        redis_client = redis.Redis.from_url(
+            os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
+            decode_responses=True
+        )
+        
+        # Get all keys matching our pattern
+        keys = redis_client.keys('jina:*')
+        
+        data = {}
+        for key in keys:
+            ttl = redis_client.ttl(key)
+            value = redis_client.get(key)
+            
+            try:
+                data[key] = {
+                    'data': json.loads(value) if value else None,
+                    'ttl_seconds': ttl,
+                    'expires_in': f"{ttl // 60} minutes" if ttl > 0 else 'expired'
+                }
+            except:
+                data[key] = {
+                    'raw': value,
+                    'ttl_seconds': ttl
+                }
+        
+        return jsonify({
+            'total_keys': len(keys),
+            'redis_data': data,
+            'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:

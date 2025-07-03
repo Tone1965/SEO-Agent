@@ -298,7 +298,7 @@
                 progress: 0,
                 currentAgent: 'Waiting to start...',
                 progressMessage: 'Ready to generate your website',
-                totalGenerated: 0,
+                totalGenerated: parseInt(localStorage.getItem('totalGenerated') || '0'),
                 results: [],
                 agents: [
                     {
@@ -475,6 +475,7 @@
                                 
                                 this.results.unshift(newResult);
                                 this.totalGenerated++;
+                                localStorage.setItem('totalGenerated', this.totalGenerated.toString());
                                 
                                 setTimeout(() => {
                                     this.isGenerating = false;
