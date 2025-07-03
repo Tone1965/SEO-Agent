@@ -1,18 +1,19 @@
 """
-Workshop Pipeline API - Handles agent execution with live data
+Workshop Pipeline API - Connects live data to agent pipeline with user control
 """
 
 from flask import Blueprint, request, jsonify
 import asyncio
-import logging
+import json
 from typing import Dict, Any
+import logging
+from datetime import datetime
+
+# Import the data coordinator
 from data_coordinator import DataCoordinator, LiveMarketData
 
-# Import existing agents
-from main import (
-    MarketScannerAgent, SEOStrategistAgent, ContentGeneratorAgent,
-    WebsiteArchitectAgent, DesignSystemAgent, AIClient
-)
+# Import AI client from main
+from main import AIClient
 
 logger = logging.getLogger(__name__)
 
@@ -20,39 +21,113 @@ workshop_pipeline_bp = Blueprint('workshop_pipeline', __name__)
 
 # Initialize components
 data_coordinator = DataCoordinator()
+ai_client = AIClient()
 
-# Agent registry with live data integration
-PIPELINE_AGENTS = {
+# Agent registry with their specific prompts
+AGENT_REGISTRY = {
     'data_gatherer': {
         'name': 'Data Gatherer',
-        'handler': lambda config, live_data: gather_live_data(config),
-        'description': 'Collects live market data using Jina/BrightData'
+        'model': 'claude',
+        'prompt_template': """You are gathering live market data for {service_type} in {location}.
+        
+Analyze the following search results and competitor data:
+{live_data}
+
+Extract and summarize:
+1. Top 10 competitors with their strengths/weaknesses
+2. Market gaps and opportunities
+3. Common pricing strategies
+4. Service offerings that are missing
+5. Local optimization opportunities
+
+Format as a clear, actionable report."""
     },
+    
     'market_scanner': {
-        'name': 'Market Scanner', 
-        'handler': lambda config, live_data: run_market_scanner(config, live_data),
-        'description': 'Analyzes competition and market opportunities'
+        'name': 'Market Scanner',
+        'model': 'claude',
+        'prompt_template': """You are the Market Scanner analyzing {service_type} in {location}.
+
+Based on this live data:
+{live_data}
+
+Previous data gathering showed:
+{previous_outputs}
+
+Provide:
+1. Competition difficulty score (1-10)
+2. Weak competitors we can outrank quickly
+3. Strong competitors and why they rank well
+4. Specific opportunities for quick wins
+5. Recommended approach to dominate this market
+
+Be specific with URLs and examples."""
     },
+    
     'seo_strategist': {
         'name': 'SEO Strategist',
-        'handler': lambda config, live_data: run_seo_strategist(config, live_data),
-        'description': 'Creates keyword strategy based on competitor analysis'
+        'model': 'claude',
+        'prompt_template': """You are the SEO Strategist for {service_type} in {location}.
+
+Live market data:
+{live_data}
+
+Market analysis:
+{previous_outputs}
+
+Create an SEO strategy including:
+1. Primary keyword target: {service_type} {location}
+2. 10 long-tail keywords with search intent
+3. Content topics that competitors miss
+4. Technical SEO priorities
+5. Link building opportunities
+6. Local SEO tactics
+
+Focus on actionable tactics that will work within 14 days."""
     },
+    
     'content_generator': {
         'name': 'Content Generator',
-        'handler': lambda config, live_data: run_content_generator(config, live_data),
-        'description': 'Generates optimized content using live market data'
+        'model': 'openai',
+        'prompt_template': """You are creating content for {service_type} in {location}.
+
+Market data and SEO strategy:
+{previous_outputs}
+
+Generate:
+1. Homepage H1 and title tag
+2. Homepage opening paragraph (150 words)
+3. 5 service page titles
+4. 3 blog post titles addressing customer questions
+5. Meta descriptions for each
+
+Make content compelling, local-focused, and conversion-optimized.
+Include urgency and trust signals."""
     },
+    
     'website_architect': {
         'name': 'Website Architect',
-        'handler': lambda config, live_data: run_website_architect(config, live_data),
-        'description': 'Designs site structure based on competitor analysis'
+        'model': 'claude',
+        'prompt_template': """You are the Website Architect for {service_type} in {location}.
+
+Based on all previous analysis:
+{previous_outputs}
+
+Design:
+1. Site structure (pages and hierarchy)
+2. URL structure
+3. Internal linking strategy
+4. Call-to-action placement
+5. Mobile-first considerations
+6. Page speed optimization priorities
+
+Output a clear sitemap and technical implementation plan."""
     }
 }
 
 @workshop_pipeline_bp.route('/api/workshop/run-agent', methods=['POST'])
 def run_agent():
-    """Execute a specific agent with live data"""
+    """Run a specific agent in the pipeline with live data"""
     try:
         data = request.json
         agent_id = data.get('agentId')
@@ -60,327 +135,134 @@ def run_agent():
         location = data.get('location')
         previous_outputs = data.get('previousOutputs', {})
         
-        if agent_id not in PIPELINE_AGENTS:
-            return jsonify({
-                'success': False,
-                'error': f'Unknown agent: {agent_id}'
-            }), 400
+        if agent_id not in AGENT_REGISTRY:
+            return jsonify({'success': False, 'error': 'Invalid agent ID'}), 400
         
-        # Create configuration
-        config = {
-            'service_type': service_type,
-            'location': location,
-            'keyword': f"{service_type} {location}",
-            'previous_outputs': previous_outputs
-        }
+        # Run async function in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(
+            run_agent_async(agent_id, service_type, location, previous_outputs)
+        )
+        loop.close()
         
-        # Get live data if this is the data gatherer
-        live_data = None
-        if agent_id == 'data_gatherer':
-            live_data = asyncio.run(gather_live_data(config))
-        else:
-            # Use live data from previous agents
-            if 'data_gatherer' in previous_outputs:
-                live_data = previous_outputs['data_gatherer'].get('liveData')
-        
-        # Execute agent
-        agent_handler = PIPELINE_AGENTS[agent_id]['handler']
-        result = agent_handler(config, live_data)
-        
-        return jsonify({
-            'success': True,
-            'agentId': agent_id,
-            'output': result['output'],
-            'liveData': result.get('liveData'),
-            'metadata': result.get('metadata', {})
-        })
+        return jsonify(result)
         
     except Exception as e:
         logger.error(f"Error running agent {agent_id}: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@workshop_pipeline_bp.route('/api/workshop/agent-status', methods=['GET'])
-def get_agent_status():
-    """Get status of all agents"""
-    return jsonify({
+async def run_agent_async(agent_id: str, service_type: str, location: str, previous_outputs: Dict) -> Dict:
+    """Async agent execution with live data"""
+    
+    agent_config = AGENT_REGISTRY[agent_id]
+    
+    # Step 1: Get live data for data gatherer, or use previous data
+    if agent_id == 'data_gatherer':
+        # Gather fresh live data
+        live_data = await data_coordinator.gather_live_data(
+            keyword=service_type,
+            location=location
+        )
+        live_data_formatted = data_coordinator.format_for_agent('DataGatherer', live_data)
+    else:
+        # Use data from previous agents
+        if 'data_gatherer' in previous_outputs:
+            live_data_formatted = previous_outputs['data_gatherer'].get('liveData', {})
+        else:
+            # Fallback: gather fresh data
+            live_data = await data_coordinator.gather_live_data(service_type, location)
+            live_data_formatted = data_coordinator.format_for_agent(agent_config['name'], live_data)
+    
+    # Step 2: Prepare the prompt
+    prompt = agent_config['prompt_template'].format(
+        service_type=service_type,
+        location=location,
+        live_data=json.dumps(live_data_formatted, indent=2),
+        previous_outputs=json.dumps(previous_outputs, indent=2) if previous_outputs else "None"
+    )
+    
+    # Step 3: Call the appropriate AI model
+    async with ai_client as client:
+        if agent_config['model'] == 'claude':
+            output = await client.claude_request(prompt)
+        else:
+            output = await client.openai_request(prompt)
+    
+    return {
         'success': True,
-        'agents': [
-            {
-                'id': agent_id,
-                'name': info['name'],
-                'description': info['description']
+        'output': output,
+        'liveData': live_data_formatted,
+        'agentId': agent_id,
+        'agentName': agent_config['name']
+    }
+
+@workshop_pipeline_bp.route('/api/workshop/validate-opportunity', methods=['POST'])
+def validate_opportunity():
+    """Quick validation of an opportunity before running full pipeline"""
+    try:
+        data = request.json
+        service_type = data.get('serviceType')
+        location = data.get('location')
+        
+        # Run async validation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Get live data
+        live_data = loop.run_until_complete(
+            data_coordinator.gather_live_data(service_type, location)
+        )
+        loop.close()
+        
+        # Return validation results
+        return jsonify({
+            'success': True,
+            'validation': {
+                'opportunityScore': live_data.opportunity_score,
+                'difficulty': live_data.difficulty_level,
+                'monthlyRevenue': live_data.monthly_revenue_potential,
+                'competitorCount': len(live_data.competitor_data),
+                'weakCompetitors': len(live_data.weak_competitors),
+                'marketGaps': live_data.market_gaps
             }
-            for agent_id, info in PIPELINE_AGENTS.items()
-        ]
-    })
+        })
+        
+    except Exception as e:
+        logger.error(f"Error validating opportunity: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# Agent Implementation Functions
-
-async def gather_live_data(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Gather live market data"""
-    keyword = config['keyword']
-    location = config['location']
-    
-    # Use data coordinator to gather comprehensive data
-    market_data = await data_coordinator.gather_live_data(keyword, location)
-    
-    output = f"""
-LIVE MARKET DATA COLLECTED
-==========================
-
-Keyword: {keyword}
-Location: {location}
-Search Results: {len(market_data.serp_results)} found
-Opportunity Score: {market_data.opportunity_score}/100
-
-COMPETITOR ANALYSIS:
-- Weak Competitors: {len(market_data.weak_competitors)}
-- Strong Competitors: {len(market_data.strong_competitors)}
-
-MARKET GAPS IDENTIFIED:
-{chr(10).join('• ' + gap for gap in market_data.market_gaps)}
-
-REVENUE POTENTIAL:
-- Estimated CPC: ${market_data.estimated_cpc}
-- Lead Value: ${market_data.lead_value}
-- Monthly Revenue: ${market_data.monthly_revenue_potential}
-
-DATA READY FOR AGENT PIPELINE
-"""
-    
-    return {
-        'output': output,
-        'liveData': market_data.__dict__,
-        'metadata': {
-            'timestamp': market_data.timestamp.isoformat(),
-            'data_quality': 'HIGH' if market_data.opportunity_score > 60 else 'MEDIUM'
+@workshop_pipeline_bp.route('/api/workshop/save-project', methods=['POST'])
+def save_project():
+    """Save the complete project with all agent outputs"""
+    try:
+        data = request.json
+        project_name = data.get('projectName')
+        agent_outputs = data.get('agentOutputs')
+        
+        # Save to file or database
+        project_data = {
+            'name': project_name,
+            'serviceType': data.get('serviceType'),
+            'location': data.get('location'),
+            'timestamp': str(datetime.now()),
+            'agentOutputs': agent_outputs
         }
-    }
-
-def run_market_scanner(config: Dict[str, Any], live_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Run Market Scanner with live data"""
-    if not live_data:
-        return {'output': 'ERROR: No live data available', 'liveData': None}
-    
-    # Format data for Market Scanner
-    scanner_data = data_coordinator.format_for_agent('MarketScanner', 
-                                                   LiveMarketData(**live_data))
-    
-    # Create market scanner analysis
-    output = f"""
-MARKET SCANNER ANALYSIS
-======================
-
-TARGET: {scanner_data['keyword']} in {scanner_data['location']}
-OPPORTUNITY SCORE: {scanner_data['opportunity_score']}/100
-
-COMPETITION BREAKDOWN:
-{chr(10).join(f"• Rank #{i+1}: {comp.get('title', 'N/A')}" 
-              for i, comp in enumerate(scanner_data['competitors'][:5]))}
-
-IDENTIFIED WEAKNESSES:
-{chr(10).join('• ' + gap for gap in scanner_data['market_gaps'])}
-
-RECOMMENDED APPROACH:
-- Target weak directory listings in positions 3-7
-- Focus on local + emergency keywords
-- Build dedicated service pages
-
-NEXT: SEO Strategist will create keyword targeting plan
-"""
-    
-    return {
-        'output': output,
-        'liveData': scanner_data,
-        'metadata': {
-            'competitors_analyzed': len(scanner_data['competitors']),
-            'opportunity_level': 'HIGH' if scanner_data['opportunity_score'] > 70 else 'MEDIUM'
-        }
-    }
-
-def run_seo_strategist(config: Dict[str, Any], live_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Run SEO Strategist with live data"""
-    if not live_data:
-        return {'output': 'ERROR: No live data available', 'liveData': None}
-    
-    # Format data for SEO Strategist
-    seo_data = data_coordinator.format_for_agent('SEOStrategist', 
-                                                LiveMarketData(**live_data))
-    
-    output = f"""
-SEO STRATEGY PLAN
-================
-
-PRIMARY KEYWORD: {seo_data['keyword']}
-DIFFICULTY: {seo_data['difficulty']}
-
-KEYWORD TARGETS:
-{chr(10).join('• ' + kw for kw in seo_data['related_keywords'][:8])}
-
-COMPETITOR WEAKNESSES TO EXPLOIT:
-{chr(10).join('• ' + str(weakness) for weakness in seo_data['competitor_weaknesses'][:5])}
-
-CONTENT GAPS TO FILL:
-{chr(10).join('• ' + gap for gap in seo_data['content_gaps'])}
-
-ON-PAGE STRATEGY:
-• Title: "{seo_data['keyword']} - Available 24/7"
-• H1: "Emergency {config['service_type']} Services"
-• Focus on local + urgency signals
-• Include pricing and guarantees
-
-NEXT: Content Generator will create optimized pages
-"""
-    
-    return {
-        'output': output,
-        'liveData': seo_data,
-        'metadata': {
-            'primary_keyword': seo_data['keyword'],
-            'difficulty_score': seo_data['difficulty'],
-            'target_keywords': len(seo_data['related_keywords'])
-        }
-    }
-
-def run_content_generator(config: Dict[str, Any], live_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Run Content Generator with live data"""
-    if not live_data:
-        return {'output': 'ERROR: No live data available', 'liveData': None}
-    
-    # Format data for Content Generator
-    content_data = data_coordinator.format_for_agent('ContentGenerator', 
-                                                    LiveMarketData(**live_data))
-    
-    # Generate sample content based on live data
-    sample_content = f"""
-# Emergency {config['service_type'].title()} Services in {config['location']}
-
-## Available 24/7 - Call Now!
-
-When you need {config['service_type']} services in {config['location']}, time is critical. Our certified professionals are standing by 24 hours a day, 7 days a week.
-
-### Why Choose Our {config['service_type'].title()} Service?
-
-✓ Licensed and insured professionals
-✓ Same-day emergency service available
-✓ Transparent pricing - no hidden fees
-✓ 100% satisfaction guarantee
-
-### Questions We Answer:
-{chr(10).join('• ' + q for q in content_data['questions_to_answer'][:3])}
-
-**Call (555) 123-4567 for immediate assistance!**
-"""
-    
-    output = f"""
-CONTENT GENERATION COMPLETE
-===========================
-
-HOMEPAGE CONTENT: ✓ Generated
-SERVICE PAGES: ✓ 5 pages created
-BLOG POSTS: ✓ 3 articles planned
-
-CONTENT OPTIMIZED FOR:
-{chr(10).join('• ' + q for q in content_data['questions_to_answer'])}
-
-SAMPLE HOMEPAGE:
-{sample_content}
-
-SEO ELEMENTS INCLUDED:
-• Title tags optimized for local search
-• H1-H6 hierarchy with target keywords
-• Local business schema markup ready
-• Call-to-action buttons every 300 words
-
-NEXT: Website Architect will structure the site
-"""
-    
-    return {
-        'output': output,
-        'liveData': {
-            'content_pieces': 8,
-            'word_count': 2500,
-            'sample_content': sample_content,
-            'seo_optimized': True
-        },
-        'metadata': {
-            'content_quality': 'HIGH',
-            'seo_score': 95,
-            'readability': 'GOOD'
-        }
-    }
-
-def run_website_architect(config: Dict[str, Any], live_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Run Website Architect with live data"""
-    if not live_data:
-        return {'output': 'ERROR: No live data available', 'liveData': None}
-    
-    # Format data for Website Architect
-    architect_data = data_coordinator.format_for_agent('WebsiteArchitect', 
-                                                      LiveMarketData(**live_data))
-    
-    site_structure = f"""
-{config['service_type'].replace(' ', '').lower()}-{config['location'].split(',')[0].lower()}.com/
-├── index.html (Homepage)
-├── services/
-│   ├── emergency-{config['service_type'].replace(' ', '-')}.html
-│   ├── weekend-{config['service_type'].replace(' ', '-')}.html
-│   └── same-day-service.html
-├── areas/
-│   ├── {config['location'].split(',')[0].lower().replace(' ', '-')}.html
-│   └── nearby-cities.html
-├── about/
-│   ├── team.html
-│   └── licenses.html
-└── contact/
-    ├── emergency.html
-    └── quote.html
-"""
-    
-    output = f"""
-WEBSITE ARCHITECTURE COMPLETE
-=============================
-
-SITE STRUCTURE:
-{site_structure}
-
-TECHNICAL SPECIFICATIONS:
-• Mobile-first responsive design
-• Page load speed target: <3 seconds  
-• Schema markup: LocalBusiness + Service
-• SSL certificate required
-• Google Analytics & Search Console integration
-
-COMPETITOR ANALYSIS INSIGHTS:
-• {len(architect_data['competitor_urls'])} competitors analyzed
-• Mobile optimization priority: {'HIGH' if architect_data['mobile_priority'] else 'STANDARD'}
-• Schema implementation needed: {'YES' if architect_data['schema_needed'] else 'NO'}
-
-KEY FEATURES:
-• Click-to-call buttons on every page
-• Emergency contact form
-• Service area coverage map
-• Customer testimonials section
-• Live chat integration ready
-
-READY FOR DEPLOYMENT!
-"""
-    
-    return {
-        'output': output,
-        'liveData': {
-            'site_structure': site_structure,
-            'page_count': 8,
-            'mobile_optimized': True,
-            'schema_ready': True,
-            'deployment_ready': True
-        },
-        'metadata': {
-            'architecture_quality': 'HIGH',
-            'mobile_score': 100,
-            'seo_structure_score': 95
-        }
-    }
+        
+        # Create projects directory if it doesn't exist
+        import os
+        os.makedirs('projects', exist_ok=True)
+        
+        # Save to JSON file
+        filename = f"projects/{project_name.replace(' ', '_').lower()}.json"
+        with open(filename, 'w') as f:
+            json.dump(project_data, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Project saved as {filename}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error saving project: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
