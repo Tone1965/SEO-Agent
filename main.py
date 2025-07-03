@@ -960,26 +960,7 @@ class SEOAgentOrchestrator:
 # Flask API for web interface
 app = Flask(__name__)
 
-# Import and register workshop blueprint
-try:
-    from workshop_api import workshop_bp
-    app.register_blueprint(workshop_bp)
-except ImportError:
-    logger.warning("Workshop API not found, workshop mode disabled")
-
-# Import and register enhanced workshop blueprint
-try:
-    from enhanced_workshop_api import enhanced_workshop_bp
-    app.register_blueprint(enhanced_workshop_bp)
-except ImportError:
-    logger.warning("Enhanced workshop API not found, enhanced features disabled")
-
-# Import and register pipeline workshop blueprint
-try:
-    from workshop_pipeline_api import workshop_pipeline_bp
-    app.register_blueprint(workshop_pipeline_bp)
-except ImportError:
-    logger.warning("Pipeline workshop API not found, pipeline features disabled")
+# Workshop blueprints removed - using only main system
 
 # Celery configuration for background tasks
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -1016,25 +997,7 @@ def index():
     """Serve the frontend interface"""
     return send_from_directory('frontend', 'index.html')
 
-@app.route('/workshop')
-def workshop():
-    """Serve the workshop interface"""
-    return send_from_directory('frontend', 'workshop.html')
-
-@app.route('/workshop-pro')
-def workshop_pro():
-    """Serve the enhanced workshop interface with opportunity finder"""
-    return send_from_directory('frontend', 'workshop_enhanced.html')
-
-@app.route('/workshop-simple')
-def workshop_simple():
-    """Serve the simple workshop interface"""
-    return send_from_directory('frontend', 'workshop_simple.html')
-
-@app.route('/workshop-pipeline')
-def workshop_pipeline():
-    """Serve the pipeline workshop interface"""
-    return send_from_directory('frontend', 'workshop_pipeline.html')
+# Workshop routes removed - using only main system at /
 
 @app.route('/api/generate', methods=['POST'])
 def generate_website():
