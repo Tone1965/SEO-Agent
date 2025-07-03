@@ -147,7 +147,7 @@
                             <i class="fas fa-database mr-2"></i>Live Data Input
                         </h3>
                         <div x-show="selectedAgent && selectedAgent.liveData" class="space-y-2 text-sm">
-                            <template x-for="(value, key) in selectedAgent.liveData" :key="key">
+                            <template x-for="(value, key) in (selectedAgent && selectedAgent.liveData ? selectedAgent.liveData : {})" :key="key">
                                 <div class="flex justify-between border-b border-gray-800 pb-1">
                                     <span class="text-gray-400" x-text="key + ':'"></span>
                                     <span class="text-white" x-text="JSON.stringify(value).substring(0, 50) + '...'"></span>
