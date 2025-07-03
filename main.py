@@ -1142,32 +1142,108 @@ def preview_website(task_id):
 
 @app.route('/api/scrape', methods=['POST'])
 def scrape_competitor():
-    """Scrape competitor website using Jina API"""
+    """Search for competitor across multiple platforms using Jina API"""
     try:
         data = request.json
-        url = data.get('url')
+        competitor_input = data.get('url', '').strip()
         
-        if not url:
-            return jsonify({'error': 'URL required'}), 400
+        if not competitor_input:
+            return jsonify({'error': 'Competitor name or URL required'}), 400
             
-        # Use Jina to scrape
         import requests
+        from urllib.parse import urlparse
         jina_api_key = os.getenv('JINA_API_KEY', '')
         headers = {"Authorization": f"Bearer {jina_api_key}"} if jina_api_key else {}
         
-        scrape_url = f"https://r.jina.ai/{url}"
-        response = requests.get(scrape_url, headers=headers, timeout=30)
-        
-        if response.status_code == 200:
-            return jsonify({
-                'success': True,
-                'content': response.text[:1000]  # First 1000 chars
-            })
+        # Extract business name from URL or use as-is
+        if competitor_input.startswith('http'):
+            parsed = urlparse(competitor_input)
+            domain = parsed.netloc.replace('www.', '')
+            business_name = domain.split('.')[0]
         else:
-            return jsonify({
-                'error': f'Scraping failed: {response.status_code}'
-            }), 500
+            business_name = competitor_input
             
+        # Search across multiple platforms
+        search_queries = [
+            f"{business_name} reviews",
+            f"{business_name} Facebook",
+            f"{business_name} Reddit",
+            f"{business_name} complaints BBB",
+            f"{business_name} Yelp"
+        ]
+        
+        all_results = []
+        for query in search_queries:
+            try:
+                search_url = f"https://s.jina.ai/{query}"
+                response = requests.get(search_url, headers=headers, timeout=15)
+                if response.status_code == 200:
+                    results = response.json()
+                    all_results.append({
+                        'query': query,
+                        'results': results.get('results', [])[:3]  # Top 3 per search
+                    })
+            except:
+                continue
+                
+        # Also scrape their main site if URL provided
+        main_site_content = ""
+        if competitor_input.startswith('http'):
+            try:
+                scrape_url = f"https://r.jina.ai/{competitor_input}"
+                response = requests.get(scrape_url, headers=headers, timeout=15)
+                if response.status_code == 200:
+                    main_site_content = response.text[:1000]
+            except:
+                pass
+        
+        return jsonify({
+            'success': True,
+            'business_name': business_name,
+            'main_site': main_site_content,
+            'presence': all_results,
+            'summary': f"Found {len(all_results)} platform results for {business_name}"
+        })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/keywords', methods=['POST'])
+def discover_keywords():
+    """Discover semantic and long-tail keywords using Jina"""
+    try:
+        data = request.json
+        seed_keyword = data.get('keyword', '').strip()
+        location = data.get('location', '').strip()
+        
+        if not seed_keyword:
+            return jsonify({'error': 'Keyword required'}), 400
+            
+        # Import and use jina_complete
+        from jina_complete import JinaComplete
+        jina = JinaComplete()
+        
+        # Get semantic keywords
+        semantic_keywords = jina.find_semantic_keywords(seed_keyword, location)[:10]
+        
+        # Get long-tail keywords
+        longtail_keywords = jina.find_longtail_keywords(seed_keyword, location)[:15]
+        
+        # Find golden opportunities
+        all_keywords = semantic_keywords + longtail_keywords
+        golden = [kw for kw in all_keywords if kw.get('opportunity_score', 0) > 70]
+        golden.sort(key=lambda x: x.get('opportunity_score', 0), reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'seed_keyword': seed_keyword,
+            'location': location,
+            'semantic_keywords': semantic_keywords,
+            'longtail_keywords': longtail_keywords,
+            'golden_opportunities': golden[:10],
+            'total_found': len(all_keywords)
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

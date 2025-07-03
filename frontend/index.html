@@ -102,17 +102,39 @@
                             </label>
                             <div class="flex space-x-2">
                                 <input x-model="formData.competitorUrl" 
-                                       type="url" 
-                                       placeholder="https://competitor-site.com" 
+                                       type="text" 
+                                       placeholder="Enter business name or website URL" 
                                        class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                                 <button @click="scrapeCompetitor()" 
                                         type="button"
-                                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors">
-                                    <i class="fas fa-robot mr-2"></i>Scrape with Jina
+                                        :disabled="isAnalyzing"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50">
+                                    <i :class="isAnalyzing ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
+                                    <span x-text="isAnalyzing ? 'Searching...' : 'Search Everywhere'"></span>
                                 </button>
                             </div>
-                            <div x-show="competitorData" class="mt-3 p-4 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-600" x-text="competitorData"></p>
+                            <div x-show="competitorData" class="mt-3 p-4 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
+                                <template x-if="competitorResults">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 mb-2">
+                                            <i class="fas fa-building mr-1"></i>
+                                            <span x-text="competitorResults.business_name"></span> - Found Across Platforms
+                                        </h4>
+                                        <template x-for="platform in competitorResults.presence" :key="platform.query">
+                                            <div class="mb-3">
+                                                <h5 class="text-sm font-medium text-gray-700 mb-1" x-text="platform.query"></h5>
+                                                <template x-for="result in platform.results" :key="result.url">
+                                                    <div class="ml-4 text-xs text-gray-600 mb-1">
+                                                        • <a :href="result.url" target="_blank" class="text-blue-600 hover:underline" x-text="result.title"></a>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!competitorResults">
+                                    <p class="text-sm text-gray-600" x-text="competitorData"></p>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -270,6 +292,8 @@
                     competitorUrl: ''
                 },
                 competitorData: null,
+                competitorResults: null,
+                isAnalyzing: false,
                 isGenerating: false,
                 progress: 0,
                 currentAgent: 'Waiting to start...',
@@ -564,12 +588,15 @@ The website is ready for deployment!`;
 
                 async scrapeCompetitor() {
                     if (!this.formData.competitorUrl) {
-                        alert('Please enter a competitor URL');
+                        alert('Please enter a competitor name or URL');
                         return;
                     }
                     
+                    this.isAnalyzing = true;
+                    this.competitorData = 'Searching across Google, Bing, Facebook, Reddit, Yelp, BBB...';
+                    this.competitorResults = null;
+                    
                     try {
-                        this.competitorData = 'Analyzing competitor site...';
                         const response = await fetch('/api/scrape', {
                             method: 'POST',
                             headers: {
@@ -581,12 +608,15 @@ The website is ready for deployment!`;
                         const data = await response.json();
                         
                         if (data.success) {
-                            this.competitorData = data.content;
+                            this.competitorResults = data;
+                            this.competitorData = data.summary;
                         } else {
                             this.competitorData = 'Error: ' + data.error;
                         }
                     } catch (error) {
-                        this.competitorData = 'Error scraping site: ' + error.message;
+                        this.competitorData = 'Error searching: ' + error.message;
+                    } finally {
+                        this.isAnalyzing = false;
                     }
                 }
             }
