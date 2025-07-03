@@ -19,6 +19,15 @@ logger = logging.getLogger(__name__)
 
 workshop_pipeline_bp = Blueprint('workshop_pipeline', __name__)
 
+@workshop_pipeline_bp.route('/api/workshop/test', methods=['GET'])
+def test_api():
+    """Test endpoint to verify API is working"""
+    return jsonify({
+        'success': True, 
+        'message': 'Workshop Pipeline API is working',
+        'timestamp': datetime.now().isoformat()
+    })
+
 # Initialize components
 data_coordinator = DataCoordinator()
 ai_client = AIClient()
@@ -158,21 +167,30 @@ async def run_agent_async(agent_id: str, service_type: str, location: str, previ
     agent_config = AGENT_REGISTRY[agent_id]
     
     # Step 1: Get live data for data gatherer, or use previous data
-    if agent_id == 'data_gatherer':
-        # Gather fresh live data
-        live_data = await data_coordinator.gather_live_data(
-            keyword=service_type,
-            location=location
-        )
-        live_data_formatted = data_coordinator.format_for_agent('DataGatherer', live_data)
-    else:
-        # Use data from previous agents
-        if 'data_gatherer' in previous_outputs:
-            live_data_formatted = previous_outputs['data_gatherer'].get('liveData', {})
+    try:
+        if agent_id == 'data_gatherer':
+            # Gather fresh live data
+            live_data = await data_coordinator.gather_live_data(
+                keyword=service_type,
+                location=location
+            )
+            live_data_formatted = data_coordinator.format_for_agent('DataGatherer', live_data)
         else:
-            # Fallback: gather fresh data
-            live_data = await data_coordinator.gather_live_data(service_type, location)
-            live_data_formatted = data_coordinator.format_for_agent(agent_config['name'], live_data)
+            # Use data from previous agents
+            if 'data_gatherer' in previous_outputs:
+                live_data_formatted = previous_outputs['data_gatherer'].get('liveData', {})
+            else:
+                # Fallback: gather fresh data
+                live_data = await data_coordinator.gather_live_data(service_type, location)
+                live_data_formatted = data_coordinator.format_for_agent(agent_config['name'], live_data)
+    except Exception as e:
+        logger.error(f"Data coordinator error for {agent_id}: {e}")
+        # Fallback to mock data
+        live_data_formatted = {
+            'search_results': f"Mock search results for {service_type} in {location}",
+            'competitor_data': f"Mock competitor analysis for {service_type}",
+            'market_opportunity': "Medium opportunity with good potential"
+        }
     
     # Step 2: Prepare the prompt
     prompt = agent_config['prompt_template'].format(
@@ -183,11 +201,15 @@ async def run_agent_async(agent_id: str, service_type: str, location: str, previ
     )
     
     # Step 3: Call the appropriate AI model
-    async with ai_client as client:
-        if agent_config['model'] == 'claude':
-            output = await client.claude_request(prompt)
-        else:
-            output = await client.openai_request(prompt)
+    try:
+        async with ai_client as client:
+            if agent_config['model'] == 'claude':
+                output = await client.claude_request(prompt)
+            else:
+                output = await client.openai_request(prompt)
+    except Exception as e:
+        logger.error(f"AI API error for {agent_id}: {e}")
+        output = f"Error generating content: {str(e)}"
     
     return {
         'success': True,

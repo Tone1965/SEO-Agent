@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEO Agent Workshop - Pipeline Control</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>SEO Agent Workshop - Pipeline Control v2.1</title>
+    <!-- Cache busting version 2.1 with fixed Alpine.js errors -->
+    <script src="https://cdn.tailwindcss.com?v=3.4.0"></script>
+    <script>
+        // Tailwind config for production use
+        tailwind.config = {
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -147,7 +156,7 @@
                             <i class="fas fa-database mr-2"></i>Live Data Input
                         </h3>
                         <div x-show="selectedAgent && selectedAgent.liveData" class="space-y-2 text-sm">
-                            <template x-for="(value, key) in selectedAgent.liveData" :key="key">
+                            <template x-for="(value, key) in (selectedAgent && selectedAgent.liveData ? selectedAgent.liveData : {})" :key="key">
                                 <div class="flex justify-between border-b border-gray-800 pb-1">
                                     <span class="text-gray-400" x-text="key + ':'"></span>
                                     <span class="text-white" x-text="JSON.stringify(value).substring(0, 50) + '...'"></span>
@@ -266,10 +275,23 @@
                 location: '',
                 pipelineRunning: false,
                 pipelineComplete: false,
-                selectedAgent: null,
+                selectedAgent: {
+                    id: null,
+                    name: '',
+                    output: '',
+                    liveData: {},
+                    status: 'pending'
+                },
                 editingOutput: false,
                 editedOutput: '',
                 currentAgentIndex: 0,
+                
+                init() {
+                    // Initialize with first agent selected to prevent null errors
+                    if (this.agents.length > 0) {
+                        this.selectedAgent = this.agents[0];
+                    }
+                },
                 
                 agents: [
                     {
