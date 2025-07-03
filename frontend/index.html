@@ -442,10 +442,10 @@
                                     success: result.success || false,
                                     downloadReady: result.download_ready || false,
                                     stats: {
-                                        pages: result.website_files?.files_created?.length || 4,
-                                        keywords: this.formData.keywords.split(',').length || 3,
-                                        content: result.agent_results ? Object.keys(result.agent_results).length : 10,
-                                        seoScore: Math.floor(Math.random() * 20) + 80
+                                        pages: result.website_files?.files_created?.length || 0,
+                                        keywords: result.project_config?.target_keywords?.length || 0,
+                                        content: result.agent_results ? Object.keys(result.agent_results).length : 0,
+                                        seoScore: result.quality_score || 0
                                     }
                                 };
                                 

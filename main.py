@@ -924,6 +924,22 @@ class SEOAgentOrchestrator:
                 asdict(config)
             )
             
+            # Calculate real quality score based on QA results
+            quality_score = 0
+            if self.results.get('qa'):
+                qa_data = self.results['qa']
+                if isinstance(qa_data, dict):
+                    # Calculate score from QA metrics
+                    if qa_data.get('seo_score'):
+                        quality_score += int(qa_data['seo_score'])
+                    if qa_data.get('content_quality'):
+                        quality_score += int(qa_data['content_quality'])
+                    if qa_data.get('technical_score'):
+                        quality_score += int(qa_data['technical_score'])
+                    quality_score = min(quality_score // 3, 100)  # Average capped at 100
+                else:
+                    quality_score = 75  # Default if QA didn't provide structured data
+            
             # Compile final results
             final_result = {
                 'project_config': asdict(config),
@@ -934,7 +950,8 @@ class SEOAgentOrchestrator:
                 'message': 'Complete website generated successfully by all 10 agents',
                 'download_ready': website_files.get('success', False),
                 'zip_path': website_files.get('zip_path'),
-                'project_dir': website_files.get('project_dir')
+                'project_dir': website_files.get('project_dir'),
+                'quality_score': quality_score
             }
             
             if website_files.get('success'):
