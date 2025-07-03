@@ -974,6 +974,13 @@ try:
 except ImportError:
     logger.warning("Enhanced workshop API not found, enhanced features disabled")
 
+# Import and register pipeline workshop blueprint
+try:
+    from workshop_pipeline_api import workshop_pipeline_bp
+    app.register_blueprint(workshop_pipeline_bp)
+except ImportError:
+    logger.warning("Pipeline workshop API not found, pipeline features disabled")
+
 # Celery configuration for background tasks
 app.config['CELERY_BROKER_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 app.config['CELERY_RESULT_BACKEND'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -1023,6 +1030,11 @@ def workshop_pro():
 def workshop_simple():
     """Serve the simple workshop interface"""
     return send_from_directory('frontend', 'workshop_simple.html')
+
+@app.route('/workshop-pipeline')
+def workshop_pipeline():
+    """Serve the pipeline workshop interface"""
+    return send_from_directory('frontend', 'workshop_pipeline.html')
 
 @app.route('/api/generate', methods=['POST'])
 def generate_website():
