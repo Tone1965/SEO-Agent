@@ -1189,18 +1189,27 @@ def scrape_competitor():
         ]
         
         all_results = []
-        for query in search_queries:
-            try:
-                search_url = f"https://s.jina.ai/{query}"
-                response = requests.get(search_url, headers=headers, timeout=15)
-                if response.status_code == 200:
-                    results = response.json()
-                    all_results.append({
-                        'query': query,
-                        'results': results.get('results', [])[:3]  # Top 3 per search
-                    })
-            except:
-                continue
+        
+        # If no API key, skip search and just scrape the main site
+        if not jina_api_key:
+            logger.warning("No Jina API key - skipping multi-platform search")
+        else:
+            for query in search_queries:
+                try:
+                    search_url = f"https://s.jina.ai/{query}"
+                    response = requests.get(search_url, headers=headers, timeout=15)
+                    if response.status_code == 200:
+                        results = response.json()
+                        all_results.append({
+                            'query': query,
+                            'results': results.get('results', [])[:3]  # Top 3 per search
+                        })
+                    elif response.status_code == 401:
+                        logger.error("Jina authentication failed - check API key")
+                        break
+                except Exception as e:
+                    logger.error(f"Jina search error: {e}")
+                    continue
                 
         # Also scrape their main site if URL provided
         main_site_content = ""
