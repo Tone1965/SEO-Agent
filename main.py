@@ -1324,6 +1324,69 @@ def view_redis_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/analyze-platforms', methods=['POST'])
+def analyze_platforms():
+    """Analyze keyword across multiple platforms"""
+    try:
+        data = request.json
+        keyword = data.get('keyword', '').strip()
+        location = data.get('location', '').strip()
+        
+        if not keyword:
+            return jsonify({'error': 'Keyword required'}), 400
+            
+        from jina_complete import JinaComplete
+        jina = JinaComplete()
+        
+        # Multi-platform content gap analysis
+        gaps = jina.analyze_content_gaps_multi_platform(keyword, location)
+        
+        # Calculate difficulty across platforms
+        difficulty = jina.calculate_multi_platform_difficulty(keyword, location)
+        
+        return jsonify({
+            'success': True,
+            'keyword': keyword,
+            'location': location,
+            'content_gaps': gaps,
+            'platform_difficulty': difficulty,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Platform analysis error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/monitor-brand', methods=['POST'])
+def monitor_brand():
+    """Monitor brand mentions across platforms"""
+    try:
+        data = request.json
+        brand_names = data.get('brands', [])
+        
+        if not brand_names:
+            return jsonify({'error': 'Brand names required'}), 400
+            
+        from jina_complete import JinaComplete
+        jina = JinaComplete()
+        
+        # Monitor brand mentions (converted from async)
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        mentions = loop.run_until_complete(jina.monitor_brand_mentions(brand_names))
+        loop.close()
+        
+        return jsonify({
+            'success': True,
+            'brand_mentions': mentions,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Brand monitoring error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""

@@ -8,6 +8,9 @@ from typing import Dict, List, Optional
 import json
 import re
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class JinaComplete:
     def __init__(self):
@@ -758,6 +761,180 @@ class JinaComplete:
         ]
         
         return plan
+    
+    def analyze_content_gaps_multi_platform(self, keyword: str, location: str = "") -> Dict:
+        """Analyze content gaps across multiple search platforms using Jina"""
+        
+        platforms = [
+            'Google', 'Bing', 'DuckDuckGo', 'Yahoo',
+            'Facebook', 'Reddit', 'Twitter', 'LinkedIn',
+            'YouTube', 'TikTok', 'Instagram'
+        ]
+        
+        gaps = {
+            'missing_platforms': [],
+            'low_competition_keywords': [],
+            'content_opportunities': [],
+            'platform_analysis': {}
+        }
+        
+        # Search across all platforms via Jina
+        for platform in platforms:
+            platform_query = f"{keyword} {location} site:{platform.lower()}.com" if platform in ['Facebook', 'Reddit', 'Twitter'] else f"{keyword} {location} {platform}"
+            
+            try:
+                results = self.search(platform_query)
+                
+                if results.get('results'):
+                    # Analyze competition on this platform
+                    competition_score = len(results['results'])
+                    gaps['platform_analysis'][platform] = {
+                        'competition_level': competition_score,
+                        'difficulty': 'LOW' if competition_score < 5 else 'MEDIUM' if competition_score < 10 else 'HIGH',
+                        'opportunity': competition_score < 5
+                    }
+                    
+                    if competition_score < 5:
+                        gaps['missing_platforms'].append(platform)
+                        gaps['content_opportunities'].append({
+                            'platform': platform,
+                            'strategy': f"Create {platform}-specific content for '{keyword}'",
+                            'priority': 'HIGH' if competition_score < 3 else 'MEDIUM'
+                        })
+                else:
+                    gaps['missing_platforms'].append(platform)
+                    
+            except Exception as e:
+                logger.error(f"Error analyzing {platform}: {e}")
+                
+        # Find low competition long-tail keywords
+        longtails = self.find_longtail_keywords(keyword, location)
+        gaps['low_competition_keywords'] = [
+            kw for kw in longtails 
+            if kw.get('competition', 1) < 0.3 and kw.get('opportunity_score', 0) > 70
+        ]
+        
+        return gaps
+    
+    def calculate_multi_platform_difficulty(self, keyword: str, location: str = "") -> Dict:
+        """Calculate keyword difficulty across multiple platforms"""
+        
+        difficulty_scores = {}
+        overall_difficulty = 0
+        platform_count = 0
+        
+        # Core search engines
+        search_engines = {
+            'google': 1.0,    # Weight factors
+            'bing': 0.8,
+            'duckduckgo': 0.6,
+            'yahoo': 0.5
+        }
+        
+        for engine, weight in search_engines.items():
+            query = f"{keyword} {location}"
+            results = self.search(query)
+            
+            if results.get('results'):
+                # Calculate difficulty based on competition
+                comp_score = self._analyze_serp_competition(results)
+                difficulty_scores[engine] = {
+                    'raw_score': comp_score['score'],
+                    'weighted_score': comp_score['score'] * weight,
+                    'difficulty_label': comp_score['difficulty']
+                }
+                overall_difficulty += comp_score['score'] * weight
+                platform_count += weight
+                
+        # Social platforms
+        social_platforms = ['Facebook', 'Reddit', 'Twitter', 'LinkedIn']
+        for platform in social_platforms:
+            query = f"{keyword} {location} site:{platform.lower()}.com"
+            results = self.search(query)
+            
+            if results.get('results'):
+                # Simpler scoring for social
+                social_score = min(len(results['results']) / 10, 1.0)
+                difficulty_scores[platform.lower()] = {
+                    'raw_score': social_score,
+                    'weighted_score': social_score * 0.3,
+                    'difficulty_label': 'LOW' if social_score < 0.3 else 'MEDIUM' if social_score < 0.7 else 'HIGH'
+                }
+                
+        return {
+            'overall_difficulty': overall_difficulty / platform_count if platform_count > 0 else 0,
+            'platform_scores': difficulty_scores,
+            'easiest_platforms': sorted(
+                difficulty_scores.items(), 
+                key=lambda x: x[1]['raw_score']
+            )[:3],
+            'recommendation': self._get_difficulty_recommendation(overall_difficulty / platform_count if platform_count > 0 else 0)
+        }
+    
+    def _get_difficulty_recommendation(self, score: float) -> str:
+        """Get recommendation based on difficulty score"""
+        if score < 0.3:
+            return "EASY - Great opportunity! Low competition across platforms"
+        elif score < 0.6:
+            return "MEDIUM - Achievable with good content and consistency"
+        else:
+            return "HARD - Requires significant effort and resources"
+    
+    async def monitor_brand_mentions(self, brand_names: List[str], platforms: List[str] = None) -> Dict:
+        """Monitor brand mentions across multiple platforms"""
+        
+        if not platforms:
+            platforms = ['Google', 'Reddit', 'Twitter', 'Facebook', 'YouTube']
+            
+        mention_data = {}
+        
+        for brand in brand_names:
+            brand_mentions = {
+                'total_mentions': 0,
+                'platform_breakdown': {},
+                'sentiment_analysis': {},
+                'recent_mentions': []
+            }
+            
+            # Search variations
+            queries = [
+                f'"{brand}"',
+                f'"{brand} review"',
+                f'"{brand} vs"',
+                f'"{brand} complaints"',
+                f'"{brand} testimonial"'
+            ]
+            
+            for query in queries:
+                results = self.search(query)
+                
+                if results.get('results'):
+                    brand_mentions['total_mentions'] += len(results['results'])
+                    
+                    for result in results['results'][:5]:
+                        # Extract platform from URL
+                        url = result.get('url', '')
+                        platform = 'other'
+                        for p in platforms:
+                            if p.lower() in url.lower():
+                                platform = p
+                                break
+                                
+                        if platform not in brand_mentions['platform_breakdown']:
+                            brand_mentions['platform_breakdown'][platform] = 0
+                        brand_mentions['platform_breakdown'][platform] += 1
+                        
+                        # Store recent mention
+                        brand_mentions['recent_mentions'].append({
+                            'title': result.get('title', ''),
+                            'url': url,
+                            'snippet': result.get('content', '')[:200],
+                            'platform': platform
+                        })
+                        
+            mention_data[brand] = brand_mentions
+            
+        return mention_data
 
 
 # Example usage
