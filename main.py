@@ -1196,7 +1196,7 @@ def scrape_competitor():
             for query in search_queries:
                 try:
                     search_url = f"https://s.jina.ai/{query}"
-                    response = requests.get(search_url, headers=headers, timeout=15)
+                    response = requests.get(search_url, headers=headers, timeout=30)
                     if response.status_code == 200:
                         # Parse text results from Jina
                         content = response.text
