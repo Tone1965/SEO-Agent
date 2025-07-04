@@ -1229,7 +1229,7 @@ def scrape_competitor():
         if competitor_input.startswith('http'):
             try:
                 scrape_url = f"https://r.jina.ai/{competitor_input}"
-                response = requests.get(scrape_url, headers=headers, timeout=15)
+                response = requests.get(scrape_url, headers=headers, timeout=30)
                 if response.status_code == 200:
                     main_site_content = response.text[:1000]
             except:
