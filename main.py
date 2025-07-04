@@ -1178,13 +1178,10 @@ def scrape_competitor():
             logger.info(f"Found cached data for {business_name}")
             return jsonify(json.loads(cached_data))
             
-        # Search across multiple platforms
+        # Search across multiple platforms (limit to 2 for speed)
         search_queries = [
             f"{business_name} reviews",
-            f"{business_name} Facebook",
-            f"{business_name} Reddit",
-            f"{business_name} complaints BBB",
-            f"{business_name} Yelp"
+            f"{business_name} Facebook"
         ]
         
         all_results = []
