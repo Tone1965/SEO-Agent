@@ -1178,10 +1178,13 @@ def scrape_competitor():
             logger.info(f"Found cached data for {business_name}")
             return jsonify(json.loads(cached_data))
             
-        # Search across multiple platforms (limit to 2 for speed)
+        # Search across multiple platforms with async parallel processing
         search_queries = [
             f"{business_name} reviews",
-            f"{business_name} Facebook"
+            f"{business_name} Facebook",
+            f"{business_name} Reddit",
+            f"{business_name} complaints BBB",
+            f"{business_name} Yelp"
         ]
         
         all_results = []
@@ -1190,16 +1193,19 @@ def scrape_competitor():
         if not jina_api_key:
             logger.warning("No Jina API key - skipping multi-platform search")
         else:
-            for query in search_queries:
+            import concurrent.futures
+            import re
+            
+            def search_single_query(query):
+                """Search a single query with timeout management"""
                 try:
                     search_url = f"https://s.jina.ai/{query}"
-                    response = requests.get(search_url, headers=headers, timeout=30)
+                    response = requests.get(search_url, headers=headers, timeout=10)  # Reduced timeout per query
                     if response.status_code == 200:
                         # Parse text results from Jina
                         content = response.text
                         results = []
                         # Extract result blocks using regex
-                        import re
                         # Find all result entries [1], [2], etc.
                         entries = re.findall(r'\[(\d+)\] Title: (.+?)\n\[(?:\d+)\] URL Source: (.+?)\n(?:\[(?:\d+)\] Description: (.+?)\n)?', content, re.DOTALL)
                         
@@ -1210,16 +1216,30 @@ def scrape_competitor():
                                 'url': url.strip(),
                                 'description': desc.strip() if desc else ''
                             })
-                        all_results.append({
+                        return {
                             'query': query,
                             'results': results
-                        })
+                        }
                     elif response.status_code == 401:
                         logger.error("Jina authentication failed - check API key")
-                        break
+                        return None
+                except requests.exceptions.Timeout:
+                    logger.warning(f"Search timed out for query: {query}")
+                    return {'query': query, 'results': [], 'error': 'timeout'}
                 except Exception as e:
-                    logger.error(f"Jina search error: {e}")
-                    continue
+                    logger.error(f"Jina search error for {query}: {e}")
+                    return {'query': query, 'results': [], 'error': str(e)}
+            
+            # Execute searches in parallel with ThreadPoolExecutor
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all queries at once
+                future_to_query = {executor.submit(search_single_query, query): query for query in search_queries}
+                
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_query, timeout=15):
+                    result = future.result()
+                    if result and result is not None:
+                        all_results.append(result)
                 
         # Also scrape their main site if URL provided
         main_site_content = ""
