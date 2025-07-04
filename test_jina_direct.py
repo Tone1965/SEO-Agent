@@ -18,11 +18,16 @@ else:
 # Test search
 print("\n1. Testing Jina Search (s.jina.ai)...")
 try:
-    response = requests.get("https://s.jina.ai/plumber Birmingham", headers=headers, timeout=10)
+    response = requests.get("https://s.jina.ai/plumber Birmingham", headers=headers, timeout=30)
     print(f"Status: {response.status_code}")
     if response.status_code == 200:
-        data = response.json()
-        print(f"Results: {len(data.get('results', []))}")
+        print(f"Content type: {response.headers.get('content-type', 'unknown')}")
+        content = response.text
+        # Count results by looking for [number] patterns
+        import re
+        results = re.findall(r'\[\d+\]', content)
+        print(f"Number of results: {len(set(results))}")
+        print(f"First 300 chars: {content[:300]}...")
     else:
         print(f"Error: {response.text[:200]}")
 except Exception as e:

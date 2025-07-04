@@ -1176,7 +1176,6 @@ def scrape_competitor():
         
         if cached_data:
             logger.info(f"Found cached data for {business_name}")
-            import json
             return jsonify(json.loads(cached_data))
             
         # Search across multiple platforms
@@ -1199,10 +1198,24 @@ def scrape_competitor():
                     search_url = f"https://s.jina.ai/{query}"
                     response = requests.get(search_url, headers=headers, timeout=15)
                     if response.status_code == 200:
-                        results = response.json()
+                        # Parse text results from Jina
+                        content = response.text
+                        results = []
+                        # Extract result blocks using regex
+                        import re
+                        # Find all result entries [1], [2], etc.
+                        entries = re.findall(r'\[(\d+)\] Title: (.+?)\n\[(?:\d+)\] URL Source: (.+?)\n(?:\[(?:\d+)\] Description: (.+?)\n)?', content, re.DOTALL)
+                        
+                        for entry in entries[:3]:  # Top 3 results
+                            num, title, url, desc = entry
+                            results.append({
+                                'title': title.strip(),
+                                'url': url.strip(),
+                                'description': desc.strip() if desc else ''
+                            })
                         all_results.append({
                             'query': query,
-                            'results': results.get('results', [])[:3]  # Top 3 per search
+                            'results': results
                         })
                     elif response.status_code == 401:
                         logger.error("Jina authentication failed - check API key")
