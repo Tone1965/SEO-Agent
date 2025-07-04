@@ -24,7 +24,27 @@ class JinaComplete:
         
         try:
             response = requests.get(url, headers=self.headers, timeout=30)
-            return response.json()
+            if response.status_code == 200:
+                # Parse text response from Jina
+                content = response.text
+                results = []
+                
+                # Extract result entries [1], [2], etc.
+                entries = re.findall(r'\[(\d+)\] Title: (.+?)\n\[(?:\d+)\] URL Source: (.+?)\n(?:\[(?:\d+)\] Description: (.+?)\n)?', content, re.DOTALL)
+                
+                for entry in entries:
+                    num, title, url, desc = entry
+                    results.append({
+                        'title': title.strip(),
+                        'url': url.strip(),
+                        'description': desc.strip() if desc else '',
+                        'rank': int(num)
+                    })
+                
+                return {'results': results, 'query': query}
+            else:
+                print(f"Search error: Status {response.status_code}")
+                return {}
         except Exception as e:
             print(f"Search error: {e}")
             return {}
