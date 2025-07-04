@@ -58,11 +58,95 @@
 
         <!-- Main Content -->
         <main class="container mx-auto px-6 py-8">
+            <!-- Market Scanner / Competitor Analysis Section -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <div class="flex items-center mb-6">
+                    <i class="fas fa-search text-purple-600 text-2xl mr-3"></i>
+                    <h2 class="text-2xl font-bold text-gray-800">Market Scanner & Competitor Analysis</h2>
+                    <span class="ml-auto text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full">
+                        <i class="fas fa-bolt mr-1"></i>Powered by Jina.ai
+                    </span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex space-x-2">
+                        <input x-model="marketSearchQuery" 
+                               type="text" 
+                               placeholder="Enter business name, competitor URL, or market keyword (e.g., 'plumber Birmingham')" 
+                               class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <button @click="performMarketScan()" 
+                                type="button"
+                                :disabled="isScanning"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50 flex items-center">
+                            <i :class="isScanning ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
+                            <span x-text="isScanning ? 'Scanning...' : 'Scan Market'"></span>
+                            <span class="ml-2 text-xs">via Jina.ai</span>
+                        </button>
+                    </div>
+
+                    <!-- Market Scan Results -->
+                    <div x-show="marketScanResults" class="mt-4 p-6 bg-purple-50 rounded-lg">
+                        <template x-if="marketScanResults">
+                            <div>
+                                <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-chart-line mr-2 text-purple-600"></i>
+                                    Market Analysis Results
+                                </h4>
+                                
+                                <!-- Quick Stats -->
+                                <div class="grid grid-cols-3 gap-4 mb-6">
+                                    <div class="bg-white p-4 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-purple-600" x-text="marketScanResults.competitorCount || '0'"></div>
+                                        <div class="text-sm text-gray-600">Competitors Found</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-blue-600" x-text="marketScanResults.platformCount || '0'"></div>
+                                        <div class="text-sm text-gray-600">Platforms Analyzed</div>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-lg text-center">
+                                        <div class="text-2xl font-bold text-green-600" x-text="marketScanResults.opportunityScore || '0'">%</div>
+                                        <div class="text-sm text-gray-600">Opportunity Score</div>
+                                    </div>
+                                </div>
+
+                                <!-- Platform Results -->
+                                <div class="space-y-3">
+                                    <template x-for="platform in (marketScanResults.presence || [])" :key="platform.query">
+                                        <div class="bg-white p-4 rounded-lg">
+                                            <h5 class="font-medium text-gray-800 mb-2" x-text="platform.query"></h5>
+                                            <div class="space-y-1">
+                                                <template x-for="result in platform.results.slice(0, 3)" :key="result.url">
+                                                    <div class="text-sm text-gray-600">
+                                                        • <a :href="result.url" target="_blank" class="text-blue-600 hover:underline" x-text="result.title"></a>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- Use for Website Generation -->
+                                <div class="mt-4 text-center">
+                                    <button @click="useMarketDataForWebsite()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors">
+                                        <i class="fas fa-arrow-down mr-2"></i>
+                                        Use This Data for Website Generation
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
             <!-- Website Generation Form -->
             <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
                 <div class="flex items-center mb-6">
                     <i class="fas fa-plus-circle text-blue-600 text-2xl mr-3"></i>
                     <h2 class="text-2xl font-bold text-gray-800">Generate New Website</h2>
+                    <span class="ml-auto text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                        <i class="fas fa-robot mr-1"></i>10 AI Agents
+                    </span>
                 </div>
 
                 <form @submit.prevent="generateWebsite()" class="space-y-6">
@@ -72,7 +156,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-building mr-2"></i>Business Type
                             </label>
-                            <input x-model="formData.businessType" type="text" placeholder="e.g., Flower Shop, Restaurant, Auto Repair" 
+                            <input x-model="formData.businessType" type="text" placeholder="e.g., Plumber, HVAC, Restaurant" 
                                    class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
 
@@ -90,66 +174,38 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-tags mr-2"></i>Target Keywords
                             </label>
-                            <input x-model="formData.keywords" type="text" placeholder="e.g., hvac repair, air conditioning, heating services" 
+                            <input x-model="formData.keywords" type="text" placeholder="e.g., emergency plumber, 24 hour service, drain cleaning" 
                                    class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <p class="text-sm text-gray-500 mt-1">Separate keywords with commas</p>
+                            <p class="text-sm text-gray-500 mt-1">Keywords will be enhanced by market scan data</p>
                         </div>
 
-                        <!-- Competitor Analysis with Jina -->
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-globe mr-2"></i>Analyze Competitor (Optional)
-                            </label>
-                            <div class="flex space-x-2">
-                                <input x-model="formData.competitorUrl" 
-                                       type="text" 
-                                       placeholder="Enter business name or website URL" 
-                                       class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <button @click="scrapeCompetitor()" 
-                                        type="button"
-                                        :disabled="isAnalyzing"
-                                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50">
-                                    <i :class="isAnalyzing ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
-                                    <span x-text="isAnalyzing ? 'Searching...' : 'Search Everywhere'"></span>
-                                </button>
-                            </div>
-                            <div x-show="competitorData" class="mt-3 p-4 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
-                                <template x-if="competitorResults">
-                                    <div>
-                                        <h4 class="font-semibold text-gray-800 mb-2">
-                                            <i class="fas fa-building mr-1"></i>
-                                            <span x-text="competitorResults.business_name"></span> - Found Across Platforms
-                                        </h4>
-                                        <template x-for="platform in competitorResults.presence" :key="platform.query">
-                                            <div class="mb-3">
-                                                <h5 class="text-sm font-medium text-gray-700 mb-1" x-text="platform.query"></h5>
-                                                <template x-for="result in platform.results" :key="result.url">
-                                                    <div class="ml-4 text-xs text-gray-600 mb-1">
-                                                        • <a :href="result.url" target="_blank" class="text-blue-600 hover:underline" x-text="result.title"></a>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </template>
-                                <template x-if="!competitorResults">
-                                    <p class="text-sm text-gray-600" x-text="competitorData"></p>
-                                </template>
+                        <!-- Market Intelligence Integration -->
+                        <div class="md:col-span-2" x-show="marketScanResults">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="text-sm font-semibold text-blue-800 mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Market Intelligence Applied
+                                </h4>
+                                <p class="text-sm text-blue-700">
+                                    Using data from <span x-text="marketScanResults?.platformCount || '0'"></span> platforms 
+                                    and <span x-text="marketScanResults?.competitorCount || '0'"></span> competitors
+                                </p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Generate Button -->
                     <div class="flex justify-center">
-                        <button type="submit" :disabled="isGenerating" 
+                        <button type="submit" :disabled="isGenerating || !formData.businessType || !formData.location" 
                                 class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
                             <span x-show="!isGenerating" class="flex items-center">
                                 <i class="fas fa-rocket mr-2"></i>
-                                Generate Website with 10 AI Agents
+                                Generate AI-Powered Website
+                                <span class="ml-2 text-xs opacity-80">with Jina.ai</span>
                             </span>
                             <span x-show="isGenerating" class="flex items-center">
                                 <i class="fas fa-spinner fa-spin mr-2"></i>
-                                Generating...
+                                AI Agents Working...
                             </span>
                         </button>
                     </div>
@@ -291,6 +347,9 @@
                     keywords: '',
                     competitorUrl: ''
                 },
+                marketSearchQuery: '',
+                marketScanResults: null,
+                isScanning: false,
                 competitorData: null,
                 competitorResults: null,
                 isAnalyzing: false,
@@ -585,6 +644,100 @@ For advanced deployment:
 The website is ready for deployment!`;
                     
                     alert(instructions);
+                },
+
+                async performMarketScan() {
+                    if (!this.marketSearchQuery) {
+                        alert('Please enter a business name, competitor, or market keyword');
+                        return;
+                    }
+                    
+                    this.isScanning = true;
+                    this.marketScanResults = null;
+                    
+                    try {
+                        // Use the simple search endpoint for fast results
+                        const response = await fetch('/api/search-simple', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ query: this.marketSearchQuery })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Process results into market scan format
+                            this.marketScanResults = {
+                                competitorCount: data.count || 0,
+                                platformCount: 1, // Simple search uses 1 platform
+                                opportunityScore: Math.min(100, 100 - (data.count * 5)), // Less competition = higher opportunity
+                                presence: [{
+                                    query: `Search results for: ${this.marketSearchQuery}`,
+                                    results: data.results || []
+                                }],
+                                raw_data: data
+                            };
+                        } else {
+                            alert('Market scan failed: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        alert('Error performing market scan: ' + error.message);
+                    } finally {
+                        this.isScanning = false;
+                    }
+                },
+
+                useMarketDataForWebsite() {
+                    if (!this.marketScanResults) return;
+                    
+                    // Extract business type and location from the search query
+                    const parts = this.marketSearchQuery.split(' ');
+                    
+                    // Try to identify location (usually last 1-2 words if they're capitalized)
+                    let location = '';
+                    let businessType = this.marketSearchQuery;
+                    
+                    // Simple heuristic: if last word is a state abbreviation or city name
+                    if (parts.length >= 2) {
+                        const lastWord = parts[parts.length - 1];
+                        const secondLastWord = parts[parts.length - 2];
+                        
+                        // Check for state abbreviation pattern (2 capital letters)
+                        if (lastWord.match(/^[A-Z]{2}$/)) {
+                            location = `${secondLastWord} ${lastWord}`;
+                            businessType = parts.slice(0, -2).join(' ');
+                        } else if (lastWord[0] === lastWord[0].toUpperCase()) {
+                            location = lastWord;
+                            businessType = parts.slice(0, -1).join(' ');
+                        }
+                    }
+                    
+                    // Populate form with extracted data
+                    this.formData.businessType = businessType || this.marketSearchQuery;
+                    this.formData.location = location || 'Your City, State';
+                    
+                    // Extract keywords from competitor results
+                    const keywords = [];
+                    if (this.marketScanResults.presence) {
+                        this.marketScanResults.presence.forEach(platform => {
+                            platform.results.slice(0, 3).forEach(result => {
+                                // Extract keywords from titles
+                                const words = result.title.toLowerCase().split(' ');
+                                words.forEach(word => {
+                                    if (word.length > 4 && !keywords.includes(word)) {
+                                        keywords.push(word);
+                                    }
+                                });
+                            });
+                        });
+                    }
+                    
+                    this.formData.keywords = keywords.slice(0, 5).join(', ');
+                    
+                    // Scroll to generation form
+                    document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
                 },
 
                 async scrapeCompetitor() {
