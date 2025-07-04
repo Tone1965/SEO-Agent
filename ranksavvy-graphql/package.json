@@ -1,0 +1,21 @@
+{
+  "name": "ranksavvy-graphql",
+  "version": "1.0.0",
+  "description": "RankSavvy GraphQL MCP Server combining Jina.ai and Claude",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@apollo/server": "^4.9.5",
+    "graphql": "^16.6.0",
+    "node-fetch": "^3.3.2",
+    "@anthropic-ai/sdk": "^0.10.0",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

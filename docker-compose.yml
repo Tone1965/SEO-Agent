@@ -108,6 +108,29 @@ services:
     networks:
       - seo_network
 
+  # RankSavvy GraphQL Server
+  ranksavvy-graphql:
+    build: ./ranksavvy-graphql
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - JINA_API_KEY=${JINA_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./ranksavvy-graphql:/app
+    depends_on:
+      - redis
+    networks:
+      - seo_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   redis_data:
     driver: local

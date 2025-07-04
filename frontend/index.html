@@ -6,12 +6,29 @@
 <!-- Terry: Use this as your main control panel to create websites -->
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SEO Agent System - Website Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            text: '#e2e8f0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -25,22 +42,60 @@
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        .gradient-bg-dark {
+            background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+        }
         .progress-bar {
             transition: width 0.5s ease;
         }
+        /* Dark mode styles */
+        .dark .agent-status-indicator {
+            color: #e2e8f0;
+        }
+        .dark .monitor-header {
+            background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+        }
+        .dark .agent-monitor-popup {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        .dark .monitor-tab {
+            color: #94a3b8;
+        }
+        .dark .monitor-tab.active {
+            color: #a78bfa;
+            background: #0f172a;
+            border-bottom-color: #a78bfa;
+        }
+        .dark .log-entry.success {
+            background: #064e3b;
+            color: #6ee7b7;
+        }
+        .dark .log-entry.info {
+            background: #1e3a8a;
+            color: #93c5fd;
+        }
+        .dark .log-entry.warning {
+            background: #78350f;
+            color: #fcd34d;
+        }
+        .dark .log-entry.error {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 dark:bg-dark-bg min-h-screen transition-colors duration-300">
     <div x-data="seoAgentApp()" class="min-h-screen">
         <!-- Header -->
-        <header class="gradient-bg text-white shadow-lg">
+        <header class="gradient-bg dark:gradient-bg-dark text-white shadow-lg transition-all duration-300">
             <div class="container mx-auto px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
                         <i class="fas fa-robot text-3xl"></i>
                         <div>
                             <h1 class="text-2xl font-bold">SEO Agent System</h1>
-                            <p class="text-blue-200">10 AI Agents • Complete Website Generation</p>
+                            <p class="text-blue-200 dark:text-purple-200">10 AI Agents • Complete Website Generation</p>
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -48,6 +103,12 @@
                             <span class="text-sm">Websites Generated: </span>
                             <span class="font-bold" x-text="totalGenerated"></span>
                         </div>
+                        <!-- Theme Toggle Button -->
+                        <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" 
+                                class="bg-white/20 hover:bg-white/30 rounded-lg px-4 py-2 transition-colors"
+                                :title="darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+                            <i :class="darkMode ? 'fas fa-sun' : 'fas fa-moon'" class="text-lg"></i>
+                        </button>
                         <button class="bg-white/20 hover:bg-white/30 rounded-lg px-4 py-2 transition-colors">
                             <i class="fas fa-cog mr-2"></i>Settings
                         </button>
@@ -95,17 +156,17 @@
                                 
                                 <!-- Quick Stats -->
                                 <div class="grid grid-cols-3 gap-4 mb-6">
-                                    <div class="bg-white p-4 rounded-lg text-center">
+                                    <div class="bg-white dark:bg-dark-bg p-4 rounded-lg text-center transition-colors duration-300">
                                         <div class="text-2xl font-bold text-purple-600" x-text="marketScanResults.competitorCount || '0'"></div>
-                                        <div class="text-sm text-gray-600">Competitors Found</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">Competitors Found</div>
                                     </div>
-                                    <div class="bg-white p-4 rounded-lg text-center">
+                                    <div class="bg-white dark:bg-dark-bg p-4 rounded-lg text-center transition-colors duration-300">
                                         <div class="text-2xl font-bold text-blue-600" x-text="marketScanResults.platformCount || '0'"></div>
-                                        <div class="text-sm text-gray-600">Platforms Analyzed</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">Platforms Analyzed</div>
                                     </div>
-                                    <div class="bg-white p-4 rounded-lg text-center">
+                                    <div class="bg-white dark:bg-dark-bg p-4 rounded-lg text-center transition-colors duration-300">
                                         <div class="text-2xl font-bold text-green-600" x-text="marketScanResults.opportunityScore || '0'">%</div>
-                                        <div class="text-sm text-gray-600">Opportunity Score</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">Opportunity Score</div>
                                     </div>
                                 </div>
 
