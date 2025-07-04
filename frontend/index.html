@@ -444,11 +444,16 @@
                     this.progressMessage = 'Setting up the generation process';
 
                     try {
-                        // Prepare data
+                        // Prepare data with all required fields
                         const requestData = {
                             business_type: this.formData.businessType,
                             location: this.formData.location,
                             target_keywords: this.formData.keywords.split(',').map(k => k.trim()),
+                            competition_level: this.marketScanResults ? 
+                                (this.marketScanResults.competitorCount > 10 ? 'high' : 
+                                 this.marketScanResults.competitorCount > 5 ? 'medium' : 'low') : 'medium',
+                            budget_range: '$3,000-$5,000',
+                            timeline: '2-4 weeks',
                             competitor_url: this.formData.competitorUrl || null
                         };
 
